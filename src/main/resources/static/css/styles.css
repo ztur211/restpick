@@ -1,0 +1,40 @@
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-image: url('../img/restaurant_real_ai_image_blur.png');
+    background-size: cover;
+    background-position: center;
+}
+
+p {
+    font-family: sans-serif;
+    font-weight: bold;
+}
+
+.place-autocomplete-card {
+  background-color: #fff;
+  border-radius: 5px;
+  box-shadow: #00000059 0 5px 15px;
+  margin: 10px;
+  padding: 5px;
+  font-family: sans-serif;
+  font-size: large;
+  font-weight: 700;
+}
+
+.center-container {
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.result-container {
+    text-align: center;
+    margin-top: 20px;
+}
+.hidden {
+    display: none;
+}
