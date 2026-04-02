@@ -1,16 +1,71 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"></html>
-<html lang="en">
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="initial-scale=1, width=device-width">
         <link href="/static/favicon.ico" rel="icon">
         <link rel="stylesheet" th:href="@{/css/styles.css}" />
         <title>Restaurant Picker!</title>
-        <script th:inline="javascript">
-            const apiKey = [[${apiKey}]];
-        </script>
         <script type="module" th:src="@{/js/index.js}"></script>
     </head>
-    <body class="center-container"></body>
+    <body class="center-container">
+        <h1>Restaurant Picker!</h1>
+        <div id="autocomplete-wrapper">
+            <input 
+                id="restaurant-input" 
+                type="text" 
+                placeholder="Enter your address..."
+                autocomplete="off"
+            />
+            <!-- Autocomplete suggestions will be displayed here -->
+        </div>
+        <div id="filter-container">
+            <label for="radius">Search radius (miles):
+                <input 
+                    type="number" 
+                    id="radius" 
+                    name="radius" 
+                    min="1" 
+                    max="100" 
+                    value="5"
+                />
+            </label>
+            <label for="cuisine">Cuisine:
+                <select id="cuisine" name="cuisine" multiple>
+                    <!-- Thymeleaf uses #strings.replace() -->
+                    <option 
+                        th:each="cuisine : ${cuisineTypes}" 
+                        th:value="${cuisine}" 
+                        th:text="${#strings.replace(#strings.replace(cuisine, '_restaurant', ''), '_', ' ')}">
+                    </option>
+                </select>
+            </label>
+            <fieldset>
+                <legend>Price Range:</legend>
+                <label><input type="checkbox" name="price" value="PRICE_LEVEL_INEXPENSIVE" class="price-checkbox"> $</label>
+                <label><input type="checkbox" name="price" value="PRICE_LEVEL_MODERATE" class="price-checkbox"> $$</label>
+                <label><input type="checkbox" name="price" value="PRICE_LEVEL_EXPENSIVE" class="price-checkbox"> $$$</label>
+                <label><input type="checkbox" name="price" value="PRICE_LEVEL_VERY_EXPENSIVE" class="price-checkbox"> $$$$</label>
+            </fieldset>
+            <label for="min-rating">Minimum Rating:
+                <select id="min-rating" name="minRating">
+                    <option value="">Any</option>
+                    <option value="3">3+</option>
+                    <option value="3.5">3.5+</option>
+                    <option value="4">4+</option>
+                    <option value="4.5">4.5+</option>
+                </select>
+            </label>
+            <label for="open-now">
+                <input type="checkbox" id="open-now" name="openNow">
+                Open Now
+            </label>
+        </div>
+        <div id="button-container">
+            <!-- Pick a restaurant button will be displayed here -->
+        </div>
+        <div id="result-container">
+            <!-- Restaurant result will be displayed here -->
+        </div>
+    </body>
 </html>

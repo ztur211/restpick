@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+
 // Controller class to handle web requests for the restaurant picker application
 @Controller // Marks the class as a REST controller
 public class IndexController {
@@ -18,10 +19,13 @@ public class IndexController {
     private String apiKey;
 
     private final RestaurantService restaurantService;
+    private final AutocompleteService autocompleteService;
 
-    public IndexController(RestaurantService restaurantService) {
+    public IndexController(RestaurantService restaurantService, AutocompleteService autocompleteService) {
         this.restaurantService = restaurantService;
+        this.autocompleteService = autocompleteService;
     }
+    
 
     @GetMapping("/")
     public String homePage(Model model) {
@@ -45,6 +49,24 @@ public class IndexController {
             Restaurant restaurant = restaurantService.getRandomNearbyRestaurant();
             return ResponseEntity.ok(restaurant);
         } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/autocomplete")
+    @ResponseBody
+    public ResponseEntity<?> autocomplete(@RequestBody Map<String, Object> body) {
+        String input = (String) body.get("input");
+        if (input == null || input.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Input is required"));
+        }
+        
+        Double biasLat = body.get("biasLat") != null ? ((Number) body.get("biasLat")).doubleValue() : null;
+        Double biasLng = body.get("biasLng") != null ? ((Number) body.get("biasLng")).doubleValue() : null;
+
+        try {
+            return ResponseEntity.ok(autocompleteService.getSuggestions(input, biasLat, biasLng));
+        } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
