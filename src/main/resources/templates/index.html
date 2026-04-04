@@ -4,33 +4,54 @@
         <meta charset="utf-8">
         <meta name="viewport" content="initial-scale=1, width=device-width">
         <link href="/static/favicon.ico" rel="icon">
+        <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}" />
         <link rel="stylesheet" th:href="@{/css/styles.css}" />
-        <title>Restaurant Picker!</title>
-        <script type="module" th:src="@{/js/index.js}"></script>
+        <title>Restaurant Picker!</title>        
+        <script th:src="@{/js/bootstrap.min.js}"></script>
+        <script type="module" th:src="@{/js/index.js}" defer></script>
     </head>
-    <body class="center-container">
-        <h1>Restaurant Picker!</h1>
-        <div id="autocomplete-wrapper">
-            <input 
-                id="restaurant-input" 
-                type="text" 
-                placeholder="Enter your address..."
-                autocomplete="off"
-            />
-            <!-- Autocomplete suggestions will be displayed here -->
+    <body class="center-container py-4">
+        <h1 class="mb-4">Restaurant Picker!</h1>
+
+        <!-- Address input with autocomplete -->
+        <div id="autocomplete-wrapper" class="position-relative col-md-6 mx-auto mb-3">
+            <div class="search-box d-flex align-items-center rounded-pill bg-white gap-2 px-3 py-2 border border-secondary rounded">
+                <svg width="25" height="24" fill="none" viewBox="0 0 25 24">
+                    <path fill="#5e5e5e" fill-rule="evenodd" d="M15.56 13.27 21.29 19l-1.49 1.49-5.73-5.73A6.4 6.4 0 0110.3 16a6.5 6.5 0 116.5-6.5c0 1.41-.47 2.7-1.24 3.77M10.3 5a4.5 4.5 0 10-.01 8.99A4.5 4.5 0 0010.3 5" clip-rule="evenodd"></path>
+                </svg>
+                <!-- Search box -->
+                <input 
+                    id="address-input"
+                    type="text"
+                    class="form-control border-0 p-0"
+                    placeholder="Enter your address..."
+                    autocomplete="off"
+                />
+                <!-- Clear button-->
+                <button 
+                    id="clear-btn"
+                    class="btn btn-link p-0 text-secondary"
+                    aria-label="Clear input"
+                    style="visibility: visible;"
+                >&times;</button>
+                <!-- Autocomplete suggestions will be displayed here -->
+            </div>
         </div>
-        <div id="filter-container">
-            <label for="radius">Search radius (miles):
+
+        <!-- Filter options -->
+        <div id="filter-container" class="col-md-6 mx-auto mb-3">
+            <label for="radius" class="form-label">Search radius (miles):
                 <input 
                     type="number" 
                     id="radius" 
                     name="radius" 
+                    class="form-control"
                     min="1" 
                     max="100" 
                     value="5"
                 />
             </label>
-            <label for="cuisine">Cuisine:
+            <label for="cuisine" class="form-label mt-2">Cuisine:
                 <select id="cuisine" name="cuisine" multiple>
                     <!-- Thymeleaf uses #strings.replace() -->
                     <option 
@@ -40,14 +61,14 @@
                     </option>
                 </select>
             </label>
-            <fieldset>
+            <fieldset class="mt-2">
                 <legend>Price Range:</legend>
                 <label><input type="checkbox" name="price" value="PRICE_LEVEL_INEXPENSIVE" class="price-checkbox"> $</label>
                 <label><input type="checkbox" name="price" value="PRICE_LEVEL_MODERATE" class="price-checkbox"> $$</label>
                 <label><input type="checkbox" name="price" value="PRICE_LEVEL_EXPENSIVE" class="price-checkbox"> $$$</label>
                 <label><input type="checkbox" name="price" value="PRICE_LEVEL_VERY_EXPENSIVE" class="price-checkbox"> $$$$</label>
             </fieldset>
-            <label for="min-rating">Minimum Rating:
+            <label for="min-rating" class="form-label mt-2">Minimum Rating:
                 <select id="min-rating" name="minRating">
                     <option value="">Any</option>
                     <option value="3">3+</option>
@@ -56,15 +77,17 @@
                     <option value="4.5">4.5+</option>
                 </select>
             </label>
-            <label for="open-now">
-                <input type="checkbox" id="open-now" name="openNow">
-                Open Now
-            </label>
+            <div class="form-check mt-2">
+                <input type="checkbox" id="open-now" name="openNow" class="form-check-input">
+                <label for="open-now" class="form-check-label">Open Now</label>
+            </div>
         </div>
-        <div id="button-container">
+
+        <!-- Button and result -->
+        <div id="button-container" class="col-md-6 mx-auto mb-3">
             <!-- Pick a restaurant button will be displayed here -->
         </div>
-        <div id="result-container">
+        <div id="result-container" class="col-md-6 mx-auto">
             <!-- Restaurant result will be displayed here -->
         </div>
     </body>

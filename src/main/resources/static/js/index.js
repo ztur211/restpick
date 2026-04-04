@@ -1,7 +1,7 @@
 let debounceTimer;
 let selectedLocation = null; // Store the selected location for biasing autocomplete results
 
-const searchInput = document.getElementById('location-input');
+const searchInput = document.getElementById('address-input');
 
 // Listen for user typing in the search bar
 searchInput.addEventListener('input', () => {
@@ -32,7 +32,7 @@ searchInput.addEventListener('input', () => {
             });
             const suggestions = await response.json();
             renderSuggestions(suggestions);
-            console.log("Debounced input value:", input.value);
+            console.log("Response:", response);
         } catch (error) {
             console.error('Autocomplete error:', error);
         }
@@ -52,6 +52,8 @@ function renderSuggestions(suggestions) {
 
     const list = document.createElement('ul');
     list.id = 'autocomplete-list';
+    list.classList.add('bg-white', 'list-unstyled', 'position-absolute', 'border', 'w-100', 'mt-1', 'overflow-hidden');
+    console.log('Rendering suggestions:', suggestions);
 
     suggestions.forEach(s => {
         const item = document.createElement('li');
