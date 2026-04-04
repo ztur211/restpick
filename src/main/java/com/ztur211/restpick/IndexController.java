@@ -26,13 +26,31 @@ public class IndexController {
         this.autocompleteService = autocompleteService;
     }
     
-
     @GetMapping("/")
     public String homePage(Model model) {
         model.addAttribute("appName", appName);
         model.addAttribute("apiKey", apiKey);
         model.addAttribute("cuisineTypes", RestaurantService.ALL_CUISINE_TYPES);
         return "index";
+    }
+
+    @PostMapping("/autocomplete")
+    @ResponseBody
+    public ResponseEntity<?> autocomplete(@RequestBody Map<String, Object> body) {
+        String input = (String) body.get("input");
+        if (input == null || input.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Input is required"));
+        }
+        
+        Double biasLat = body.get("biasLat") != null ? ((Number) body.get("biasLat")).doubleValue() : null;
+        Double biasLng = body.get("biasLng") != null ? ((Number) body.get("biasLng")).doubleValue() : null;
+
+        try {
+            System.out.println("Calling autocomplete service with input: " + input);
+            return ResponseEntity.ok(autocompleteService.getSuggestions(input, biasLat, biasLng));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/search")
@@ -51,23 +69,5 @@ public class IndexController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-    }
-
-    @PostMapping("/autocomplete")
-    @ResponseBody
-    public ResponseEntity<?> autocomplete(@RequestBody Map<String, Object> body) {
-        String input = (String) body.get("input");
-        if (input == null || input.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Input is required"));
-        }
-        
-        Double biasLat = body.get("biasLat") != null ? ((Number) body.get("biasLat")).doubleValue() : null;
-        Double biasLng = body.get("biasLng") != null ? ((Number) body.get("biasLng")).doubleValue() : null;
-
-        try {
-            return ResponseEntity.ok(autocompleteService.getSuggestions(input, biasLat, biasLng));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
+    }    
 }

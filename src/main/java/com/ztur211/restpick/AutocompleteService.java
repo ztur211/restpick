@@ -38,6 +38,9 @@ public class AutocompleteService {
         List<String> regionCodes = Arrays.asList(apiRegion.split(","));
         payload.put("includedRegionCodes", regionCodes);
 
+        
+        System.out.println("Input: " + input);
+
         if (biasLat != null && biasLng != null) {
             Map<String, Object> locationBias = Map.of(
                 "circle", Map.of(
@@ -53,6 +56,7 @@ public class AutocompleteService {
             payload.put("locationBias", locationBias);
         }
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+        System.out.println("Request payload and headers: " + payload + headers);
 
         try {
             ResponseEntity<AutocompleteResponse> response = restTemplate.exchange(
@@ -64,6 +68,7 @@ public class AutocompleteService {
 
             AutocompleteResponse body = response.getBody();
             if (body == null || body.getSuggestions() == null) {
+                System.out.println("No suggestions found in response: " + response);
                 return Collections.emptyList();
             }
 
@@ -73,6 +78,7 @@ public class AutocompleteService {
                 if (prediction != null) {
                     String placeId = prediction.getPlaceId();
                     String address = prediction.getText() != null ? prediction.getText().getText() : "";
+                    System.out.println("Suggestion: " + address + " (placeId: " + placeId + ")");
                     results.add(new AutocompleteSuggestion(placeId, address));
                 }
             }
@@ -89,7 +95,6 @@ public class AutocompleteService {
         headers.set("X-Goog-Api-FieldMask", "location");
 
         HttpEntity<Void> request = new HttpEntity<>(headers);
-
         try {
             ResponseEntity<Map> response = restTemplate.exchange(
                 PLACE_DETAILS_URL + placeId,
@@ -102,6 +107,7 @@ public class AutocompleteService {
             if (body == null || !body.containsKey("location")) {
                 throw new RuntimeException("No location data found for place ID: " + placeId);
             }
+            System.out.println("Place details response: " + body);
 
             Map<String, Double> location = (Map<String, Double>) body.get("location");
             return Map.of(

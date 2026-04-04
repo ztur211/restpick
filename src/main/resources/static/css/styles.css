@@ -8,22 +8,6 @@ body {
     background-position: center;
 }
 
-p {
-    font-family: sans-serif;
-    font-weight: bold;
-}
-
-.place-autocomplete-card {
-  background-color: #fff;
-  border-radius: 5px;
-  box-shadow: #00000059 0 5px 15px;
-  margin: 10px;
-  padding: 5px;
-  font-family: sans-serif;
-  font-size: large;
-  font-weight: 700;
-}
-
 .center-container {
     font-family: Arial, sans-serif;
     display: flex;
@@ -31,10 +15,32 @@ p {
     justify-content: center;
     align-items: center;
 }
-.result-container {
-    text-align: center;
-    margin-top: 20px;
+
+#address-input {
+    border: none;
+    color: #1e1e1e;
+    outline: none;
+    box-shadow: none;
 }
-.hidden {
-    display: none;
+
+#address-input:focus {
+    color: #1e1e1e;
+    box-shadow: none;
+}
+
+#address-input::placeholder {
+    color: #2e2e2e;
+}
+
+.autocomplete-wrapper.is-open .rounded-pill {
+    border-radius: 1rem 1rem 0 0 !important;
+}
+
+#autocomplete-list {
+    border-radius: 0 0 12px 12px;
+    border-top: none;
+}
+
+.autocomplete-item + .autocomplete-item {
+    border-top: 1px solid #9aa0a6;
 }
