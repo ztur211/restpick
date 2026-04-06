@@ -44,3 +44,12 @@ body {
 .autocomplete-item + .autocomplete-item {
     border-top: 1px solid #9aa0a6;
 }
+
+#price-dropdown,
+#rating-dropdown,
+#cuisine-dropdown,
+#hours-dropdown,
+#radius-dropdown {
+    min-width: 110px;
+    text-align: left;
+}

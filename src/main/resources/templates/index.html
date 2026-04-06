@@ -5,9 +5,9 @@
         <meta name="viewport" content="initial-scale=1, width=device-width">
         <link href="/static/favicon.ico" rel="icon">
         <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}" />
-        <link rel="stylesheet" th:href="@{/css/styles.css}" />
+        <link rel="stylesheet" th:href="@{/css/styles.css}" defer/>
         <title>Restaurant Picker!</title>        
-        <script th:src="@{/js/bootstrap.min.js}"></script>
+        <script th:src="@{/js/bootstrap.bundle.min.js}"></script>
         <script type="module" th:src="@{/js/index.js}" defer></script>
     </head>
     <body class="center-container py-4">
@@ -15,8 +15,8 @@
 
         <!-- Address input with autocomplete -->
         <div id="autocomplete-wrapper" class="position-relative col-md-6 mx-auto mb-3">
-            <div class="search-box d-flex align-items-center rounded-pill bg-white gap-2 px-3 py-2 border border-secondary rounded">
-                <svg width="25" height="24" fill="none" viewBox="0 0 25 24">
+            <div class="d-flex align-items-center rounded-pill bg-white gap-2 px-3 py-2 border border-secondary">
+                <svg width="25" height="24" fill="none" viewBox="0 0 25 24" class="flex-shrink-0">
                     <path fill="#5e5e5e" fill-rule="evenodd" d="M15.56 13.27 21.29 19l-1.49 1.49-5.73-5.73A6.4 6.4 0 0110.3 16a6.5 6.5 0 116.5-6.5c0 1.41-.47 2.7-1.24 3.77M10.3 5a4.5 4.5 0 10-.01 8.99A4.5 4.5 0 0010.3 5" clip-rule="evenodd"></path>
                 </svg>
                 <!-- Search box -->
@@ -32,54 +32,213 @@
                     id="clear-btn"
                     class="btn btn-link p-0 text-secondary"
                     aria-label="Clear input"
-                    style="visibility: visible;"
+                    style="display: none;"
                 >&times;</button>
                 <!-- Autocomplete suggestions will be displayed here -->
+                 <ul id="autocomplete-list"
+                    class="list-unstyled position-absolute w-100 bg-white border border-secondary border-top-0 m-0 p-0 overflow-hidden"
+                    style="display: none; z-index: 1000;">
+                </ul>
             </div>
         </div>
 
         <!-- Filter options -->
         <div id="filter-container" class="col-md-6 mx-auto mb-3">
-            <label for="radius" class="form-label">Search radius (miles):
-                <input 
-                    type="number" 
-                    id="radius" 
-                    name="radius" 
-                    class="form-control"
-                    min="1" 
-                    max="100" 
-                    value="5"
-                />
-            </label>
-            <label for="cuisine" class="form-label mt-2">Cuisine:
-                <select id="cuisine" name="cuisine" multiple>
-                    <!-- Thymeleaf uses #strings.replace() -->
-                    <option 
-                        th:each="cuisine : ${cuisineTypes}" 
-                        th:value="${cuisine}" 
-                        th:text="${#strings.replace(#strings.replace(cuisine, '_restaurant', ''), '_', ' ')}">
-                    </option>
-                </select>
-            </label>
-            <fieldset class="mt-2">
-                <legend>Price Range:</legend>
-                <label><input type="checkbox" name="price" value="PRICE_LEVEL_INEXPENSIVE" class="price-checkbox"> $</label>
-                <label><input type="checkbox" name="price" value="PRICE_LEVEL_MODERATE" class="price-checkbox"> $$</label>
-                <label><input type="checkbox" name="price" value="PRICE_LEVEL_EXPENSIVE" class="price-checkbox"> $$$</label>
-                <label><input type="checkbox" name="price" value="PRICE_LEVEL_VERY_EXPENSIVE" class="price-checkbox"> $$$$</label>
-            </fieldset>
-            <label for="min-rating" class="form-label mt-2">Minimum Rating:
-                <select id="min-rating" name="minRating">
-                    <option value="">Any</option>
-                    <option value="3">3+</option>
-                    <option value="3.5">3.5+</option>
-                    <option value="4">4+</option>
-                    <option value="4.5">4.5+</option>
-                </select>
-            </label>
-            <div class="form-check mt-2">
-                <input type="checkbox" id="open-now" name="openNow" class="form-check-input">
-                <label for="open-now" class="form-check-label">Open Now</label>
+            <div class="d-flex flex-wrap gap-2">
+
+                <!-- Price -->
+                <div class="dropdown">
+                    <button class="btn btn-light dropdown-toggle rounded-pill" type="button"
+                            data-bs-toggle="dropdown"
+                            data-bs-auto-close="outside"
+                            aria-expanded="false"
+                            id="price-dropdown">💳 <span>Price</span>
+                    </button>
+                    <ul class="dropdown-menu p-2" aria-labelledby="price-dropdown">
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="price" id="price-any" value="" checked>
+                                <label class="form-check-label w-100" for="price-any">Any price</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="price" id="price-1" value="PRICE_LEVEL_INEXPENSIVE">
+                                <label class="form-check-label w-100" for="price-1">$</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="price" id="price-2" value="PRICE_LEVEL_MODERATE">
+                                <label class="form-check-label w-100" for="price-2">$$</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="price" id="price-3" value="PRICE_LEVEL_EXPENSIVE">
+                                <label class="form-check-label w-100" for="price-3">$$$</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="price" id="price-4" value="PRICE_LEVEL_VERY_EXPENSIVE">
+                                <label class="form-check-label w-100" for="price-4">$$$$</label>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Rating -->
+                <div class="dropdown">
+                    <button class="btn btn-light dropdown-toggle rounded-pill" type="button"
+                            data-bs-toggle="dropdown"
+                            data-bs-auto-close="outside"
+                            aria-expanded="false"
+                            id="rating-dropdown">★ <span>Rating</span>
+                    </button>
+                    <ul class="dropdown-menu p-2" aria-labelledby="rating-dropdown">
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="minRating" id="rating-any" value="" checked>
+                                <label class="form-check-label w-100" for="rating-any">Any rating</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="minRating" id="rating-2" value="2">
+                                <label class="form-check-label w-100" for="rating-2">2.0 ★★☆☆☆</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="minRating" id="rating-25" value="2.5">
+                                <label class="form-check-label w-100" for="rating-25">2.5 ★★½☆☆</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="minRating" id="rating-3" value="3">
+                                <label class="form-check-label w-100" for="rating-3">3.0 ★★★☆☆</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="minRating" id="rating-35" value="3.5">
+                                <label class="form-check-label w-100" for="rating-35">3.5 ★★★½☆</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="minRating" id="rating-4" value="4">
+                                <label class="form-check-label w-100" for="rating-4">4.0 ★★★★☆</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="minRating" id="rating-45" value="4.5">
+                                <label class="form-check-label w-100" for="rating-45">4.5 ★★★★½</label>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Cuisine -->
+                <div class="dropdown">
+                    <button class="btn btn-light dropdown-toggle rounded-pill" type="button"
+                            data-bs-toggle="dropdown"
+                            data-bs-auto-close="outside"
+                            aria-expanded="false"
+                            id="cuisine-dropdown">🍽️ <span>Cuisine</span>
+                    </button>
+                    <ul class="dropdown-menu p-2" 
+                        aria-labelledby="cuisine-dropdown" 
+                        style="max-height:200px; overflow-y:auto;">
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="cuisine" id="cuisine-any" value="" checked>
+                                <label class="form-check-label w-100" for="cuisine-any">Any cuisine</label>
+                            </div>
+                        </li>
+                        <li th:each="cuisine, i : ${cuisineTypes}">
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="cuisine"
+                                    th:id="${'cuisine-' + i.index}"
+                                    th:value="${cuisine}">
+                                <label class="form-check-label w-100"
+                                    th:for="${'cuisine-' + i.index}"
+                                    th:text="${#strings.capitalize(#strings.replace(#strings.replace(cuisine, '_restaurant', ''), '_', ' '))}">
+                                </label>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Hours -->
+                <div class="dropdown">
+                    <button class="btn btn-light dropdown-toggle rounded-pill" type="button"
+                            data-bs-toggle="dropdown"
+                            data-bs-auto-close="outside"
+                            aria-expanded="false"
+                            id="hours-dropdown">🕐 <span>Hours</span>
+                    </button>
+                    <ul class="dropdown-menu p-2" aria-labelledby="hours-dropdown">
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="openNow" id="hours-any" value="" checked>
+                                <label class="form-check-label w-100" for="hours-any">Any hours</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="openNow" id="hours-open" value="true">
+                                <label class="form-check-label w-100" for="hours-open">Open now</label>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Radius -->
+                <div class="dropdown">
+                    <button class="btn btn-light dropdown-toggle rounded-pill" type="button"
+                            data-bs-toggle="dropdown"
+                            data-bs-auto-close="outside"
+                            aria-expanded="false"
+                            id="radius-dropdown">📍<span>Distance</span>
+                    </button>
+                    <ul class="dropdown-menu p-2" aria-labelledby="radius-dropdown">
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="radius" id="radius-1" value="1">
+                                <label class="form-check-label w-100" for="radius-1">1 mile</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="radius" id="radius-5" value="5" checked>
+                                <label class="form-check-label w-100" for="radius-5">5 miles</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="radius" id="radius-10" value="10">
+                                <label class="form-check-label w-100" for="radius-10">10 miles</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="radius" id="radius-25" value="25">
+                                <label class="form-check-label w-100" for="radius-25">25 miles</label>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="form-check py-1 ps-4">
+                                <input class="form-check-input" type="radio" name="radius" id="radius-50" value="50">
+                                <label class="form-check-label w-100" for="radius-50">50 miles</label>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
             </div>
         </div>
 
