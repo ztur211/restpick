@@ -133,6 +133,24 @@ function clearSuggestions() {
     }
 }
 
+// Update all dropdown button labels when a radio is selected
+['cuisine', 'minRating', 'price', 'openNow', 'radius'].forEach(name => {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(radio => {
+        radio.addEventListener('change', () => {
+            const labelText = document.querySelector(`label[for="${radio.id}"]`).textContent.trim();
+            const buttonMap = {
+                cuisine:   'cuisine-dropdown',
+                minRating: 'rating-dropdown',
+                price:     'price-dropdown',
+                openNow:   'hours-dropdown',
+                radius:    'radius-dropdown'
+            };
+            const btn = document.getElementById(buttonMap[name]);
+            btn.querySelector('span').textContent = labelText;
+        });
+    });
+});
+
 function showResult(restaurant) {
     const resultDiv = document.getElementById('result');
     
