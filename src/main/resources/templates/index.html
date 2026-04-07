@@ -14,8 +14,8 @@
         <h1 class="mb-4">Restaurant Picker!</h1>
 
         <!-- Address input with autocomplete -->
-        <div id="autocomplete-wrapper" class="position-relative col-md-6 mx-auto mb-3">
-            <div class="d-flex align-items-center rounded-pill bg-white gap-2 px-3 py-2 border border-secondary">
+        <div id="autocomplete-wrapper" class="position-relative col-md-6 mx-auto mb-3 border-secondary">
+            <div class="d-flex align-items-center rounded-pill bg-white gap-2 px-3 py-2 border">
                 <svg width="25" height="24" fill="none" viewBox="0 0 25 24" class="flex-shrink-0">
                     <path fill="#5e5e5e" fill-rule="evenodd" d="M15.56 13.27 21.29 19l-1.49 1.49-5.73-5.73A6.4 6.4 0 0110.3 16a6.5 6.5 0 116.5-6.5c0 1.41-.47 2.7-1.24 3.77M10.3 5a4.5 4.5 0 10-.01 8.99A4.5 4.5 0 0010.3 5" clip-rule="evenodd"></path>
                 </svg>
@@ -28,26 +28,26 @@
                     autocomplete="off"
                 />
                 <!-- Clear button-->
-                <button 
+<!--                 <button 
                     id="clear-btn"
                     class="btn btn-link p-0 text-secondary"
                     aria-label="Clear input"
                     style="display: none;"
-                >&times;</button>
+                >&times;</button> -->
                 <!-- Autocomplete suggestions will be displayed here -->
                  <ul id="autocomplete-list"
                     class="list-unstyled position-absolute w-100 bg-white border border-secondary border-top-0 m-0 p-0 overflow-hidden"
-                    style="display: none; z-index: 1000;">
+                    style="display: none;">
                 </ul>
             </div>
         </div>
 
         <!-- Filter options -->
-        <div id="filter-container" class="col-md-6 mx-auto mb-3">
-            <div class="d-flex flex-wrap gap-2">
+        <div id="filter-container" class="text-center">
+            <div class="row gap-2">
 
                 <!-- Price -->
-                <div class="dropdown">
+                <div class="dropdown col">
                     <button class="btn btn-light dropdown-toggle rounded-pill" type="button"
                             data-bs-toggle="dropdown"
                             data-bs-auto-close="outside"
@@ -89,7 +89,7 @@
                 </div>
 
                 <!-- Rating -->
-                <div class="dropdown">
+                <div class="dropdown col">
                     <button class="btn btn-light dropdown-toggle rounded-pill" type="button"
                             data-bs-toggle="dropdown"
                             data-bs-auto-close="outside"
@@ -106,44 +106,44 @@
                         <li>
                             <div class="form-check py-1 ps-4">
                                 <input class="form-check-input" type="radio" name="minRating" id="rating-2" value="2">
-                                <label class="form-check-label w-100" for="rating-2">2.0 ★★☆☆☆</label>
+                                <label class="form-check-label w-100" for="rating-2">2.0+ ★★☆☆☆</label>
                             </div>
                         </li>
                         <li>
                             <div class="form-check py-1 ps-4">
                                 <input class="form-check-input" type="radio" name="minRating" id="rating-25" value="2.5">
-                                <label class="form-check-label w-100" for="rating-25">2.5 ★★½☆☆</label>
+                                <label class="form-check-label w-100" for="rating-25">2.5+ ★★½☆☆</label>
                             </div>
                         </li>
                         <li>
                             <div class="form-check py-1 ps-4">
                                 <input class="form-check-input" type="radio" name="minRating" id="rating-3" value="3">
-                                <label class="form-check-label w-100" for="rating-3">3.0 ★★★☆☆</label>
+                                <label class="form-check-label w-100" for="rating-3">3.0+ ★★★☆☆</label>
                             </div>
                         </li>
                         <li>
                             <div class="form-check py-1 ps-4">
                                 <input class="form-check-input" type="radio" name="minRating" id="rating-35" value="3.5">
-                                <label class="form-check-label w-100" for="rating-35">3.5 ★★★½☆</label>
+                                <label class="form-check-label w-100" for="rating-35">3.5+ ★★★½☆</label>
                             </div>
                         </li>
                         <li>
                             <div class="form-check py-1 ps-4">
                                 <input class="form-check-input" type="radio" name="minRating" id="rating-4" value="4">
-                                <label class="form-check-label w-100" for="rating-4">4.0 ★★★★☆</label>
+                                <label class="form-check-label w-100" for="rating-4">4.0+ ★★★★☆</label>
                             </div>
                         </li>
                         <li>
                             <div class="form-check py-1 ps-4">
                                 <input class="form-check-input" type="radio" name="minRating" id="rating-45" value="4.5">
-                                <label class="form-check-label w-100" for="rating-45">4.5 ★★★★½</label>
+                                <label class="form-check-label w-100" for="rating-45">4.5+ ★★★★½</label>
                             </div>
                         </li>
                     </ul>
                 </div>
 
                 <!-- Cuisine -->
-                <div class="dropdown">
+                <div class="dropdown col">
                     <button class="btn btn-light dropdown-toggle rounded-pill" type="button"
                             data-bs-toggle="dropdown"
                             data-bs-auto-close="outside"
@@ -174,7 +174,7 @@
                 </div>
 
                 <!-- Hours -->
-                <div class="dropdown">
+                <div class="dropdown col">
                     <button class="btn btn-light dropdown-toggle rounded-pill" type="button"
                             data-bs-toggle="dropdown"
                             data-bs-auto-close="outside"
@@ -198,7 +198,7 @@
                 </div>
 
                 <!-- Radius -->
-                <div class="dropdown">
+                <div class="dropdown col">
                     <button class="btn btn-light dropdown-toggle rounded-pill" type="button"
                             data-bs-toggle="dropdown"
                             data-bs-auto-close="outside"
