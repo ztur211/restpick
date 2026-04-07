@@ -32,14 +32,28 @@ body {
     color: #2e2e2e;
 }
 
-.autocomplete-wrapper.is-open .rounded-pill {
+.rounded-pill {
+    border-radius: 1rem 1rem 1rem 1rem !important;
+}
+
+#autocomplete-wrapper .rounded-pill {
+    border-radius: 1rem 1rem 1rem 1rem;
+}
+
+#autocomplete-wrapper.is-open .rounded-pill {
     border-radius: 1rem 1rem 0 0 !important;
 }
 
 #autocomplete-list {
-    border-radius: 0 0 12px 12px;
+    border-radius: 0 0 1rem 1rem;
     border-top: none;
+    z-index: 1000;
 }
+
+#autocomplete-list .autocomplete-item{
+    padding-left: 48px; /* Pad text past search icon */
+}
+
 
 .autocomplete-item + .autocomplete-item {
     border-top: 1px solid #9aa0a6;

@@ -2,6 +2,7 @@ let debounceTimer;
 let selectedLocation = null; // Store the selected location for biasing autocomplete results
 
 const searchInput = document.getElementById('address-input');
+const autocompleteWrapper = document.getElementById('autocomplete-wrapper');
 
 // Listen for user typing in the search bar
 searchInput.addEventListener('input', () => {
@@ -10,6 +11,7 @@ searchInput.addEventListener('input', () => {
     selectedLocation = null; // Reset selected location when user types
     removeActionButton();
     clearSuggestions();
+    autocompleteWrapper.classList.toggle('is-open', false);
 
     if (input.length < 3) {
         return; // Don't fetch suggestions for very short input
@@ -41,32 +43,39 @@ searchInput.addEventListener('input', () => {
 
 document.addEventListener('click', (e) => {
     if (!e.target.closest('#autocomplete-wrapper')) {
+        autocompleteWrapper.classList.toggle('is-open', false);
         clearSuggestions();
     }
 });
 
 function renderSuggestions(suggestions) {
     clearSuggestions();
+    autocompleteWrapper.classList.toggle('is-open', false);
 
     if (!suggestions || suggestions.length === 0) return;
 
     const list = document.createElement('ul');
     list.id = 'autocomplete-list';
-    list.classList.add('bg-white', 'list-unstyled', 'position-absolute', 'border', 'w-100', 'mt-1', 'overflow-hidden');
+    list.classList.add('bg-white', 'list-unstyled', 'position-absolute', 'border', 'w-100', 'mt-0', 'overflow-hidden');
     console.log('Rendering suggestions:', suggestions);
+    
 
     suggestions.forEach(s => {
         const item = document.createElement('li');
+        item.className = 'autocomplete-item';
         item.textContent = s.address;
         item.addEventListener('click', () => onSuggestionClick(s));
         list.appendChild(item);
     });
     document.getElementById('autocomplete-wrapper').appendChild(list);
+    autocompleteWrapper.classList.toggle('is-open', true);
 }
 
 async function onSuggestionSelected(suggestion) {
     searchInput.value = suggestion.address;
+    clearBtn.style.display = 'block';
     clearSuggestions();
+    autocompleteWrapper.classList.toggle('is-open', false);
 
     try {
         const response = await fetch('/resolve-location', {
@@ -89,19 +98,39 @@ function showActionButton() {
     removeActionButton(); // Ensure no duplicate buttons
 
     const button = document.createElement('button');
-    button.id = 'action-button';
-    button.textContent = 'Find Restaurants';
+    button.id = 'pick-restaurant-btn';
     button.type = 'button';
+    button.className = 'btn btn-primary mt-3';
+    button.textContent = 'Pick a Restaurant for Me!';
     document.getElementById('button-container').appendChild(button);
 
     button.addEventListener('click', async () => {
         if (!selectedLocation) return;
 
+        // Collect all filter values
+        const radiusMiles = document.querySelector('input[name="radius"]:checked')?.value || '5';
+        const cuisine = document.querySelector('input[name="cuisine"]:checked')?.value || '';
+        const price = document.querySelector('input[name="price"]:checked')?.value || '';
+        const minRating = document.querySelector('input[name="minRating"]:checked')?.value || '';
+        const openNow = document.querySelector('input[name="openNow"]:checked')?.value === 'true';
+
+        const requestBody = {
+            location: {
+                lat: selectedPlace.lat,
+                lng: selectedPlace.lng
+            },
+            radiusMiles: parseFloat(radiusMiles),
+            cuisineTypes: cuisine ? [cuisine] : [],
+            priceLevels: price ? [price] : [],
+            minimumRating: minRating ? parseFloat(minRating) : null,
+            openNow: openNow
+        };
+
         try {
-            const response = await fetch('/restaurants', {
+            const response = await fetch('/pick', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lat: selectedLocation.lat, lng: selectedLocation.lng })
+                body: JSON.stringify(requestBody)
             });
 
             if (!response.ok) {
@@ -112,6 +141,7 @@ function showActionButton() {
 
             const restaurant = await response.json();
             showResult(restaurant);
+
         } catch (error) {
             console.error('Error fetching restaurants:', error);
             showResult('Failed to fetch restaurant suggestions');
@@ -151,29 +181,29 @@ function clearSuggestions() {
     });
 });
 
-function showResult(restaurant) {
-    const resultDiv = document.getElementById('result');
-    
-    if (typeof restaurant === 'string') {
-        resultDiv.innerHTML = `<p>${restaurant}</p>`;
-        return;
-    }
-    resultDiv.innerHTML = `
-        <h2>${restaurant.displayName}</h2>
-        <p>${restaurant.formattedAddress}</p>
-        <p>Rating: ${restaurant.rating ?? 'N/A'}</p>
-        <p>Price: ${formatPriceLevel(restaurant.priceLevel)}</p>
-        ${restaurant.websiteUri ? `<a href="${restaurant.websiteUri}" target="_blank">Visit Website</a>` : ''}
-    `;
-}
-
 function formatPriceLevel(priceLevel) {
     const priceLevels = {
-        'PRICE_LEVEL_UNSPECIFIED': 'Unknown',
+        'PRICE_LEVEL_ANY': 'Any Price',
         'PRICE_LEVEL_INEXPENSIVE': '$',
         'PRICE_LEVEL_MODERATE': '$$',
         'PRICE_LEVEL_EXPENSIVE': '$$$',
         'PRICE_LEVEL_VERY_EXPENSIVE': '$$$$'
     };
-    return priceLevels[priceLevel] ?? 'Unknown';
+    return priceLevels[priceLevel] ?? 'N/A';
+}
+
+function showResult(restaurant) {
+    const resultDiv = document.getElementById('result-container');
+    
+    if (typeof restaurant === 'string') {
+        resultDiv.innerHTML = `<div class="alert alert-info" role="alert">${restaurant}</div>`;
+        return;
+    }
+    resultDiv.innerHTML = `
+        <h2>${restaurant.displayName}</h2>
+        <p>Rating: ${restaurant.rating ?? 'N/A'}</p>
+        <p>${restaurant.formattedAddress}</p>
+        <p>Price: ${formatPriceLevel(restaurant.priceLevel)}</p>
+        ${restaurant.websiteUri ? `<a href="${restaurant.websiteUri}" target="_blank">Visit Website</a>` : ''}
+    `;
 }
