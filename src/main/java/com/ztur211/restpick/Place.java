@@ -7,6 +7,7 @@ public class Place {
     private String websiteUri;
     private Double rating;
     private String priceLevel;
+    private Location location;
 
     public DisplayName getDisplayName() {
         return displayName;
@@ -43,6 +44,13 @@ public class Place {
         this.priceLevel = priceLevel;
     }
 
+    public Location getLocation() {
+        return location;
+    }
+    public void setLocation(Location location) {
+        this.location = location;
+    }
+
     public static class DisplayName {
         private String text;
 
@@ -51,6 +59,25 @@ public class Place {
         }
         public void setText(String text) {
             this.text = text;
+        }
+    }
+
+    public static class Location {
+        private Double latitude;
+        private Double longitude;
+
+        public Double getLatitude() {
+            return latitude;
+        }
+        public void setLatitude(Double latitude) {
+            this.latitude = latitude;
+        }
+
+        public Double getLongitude() {
+            return longitude;
+        }
+        public void setLongitude(Double longitude) {
+            this.longitude = longitude;
         }
     }
 }

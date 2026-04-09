@@ -23,8 +23,8 @@ searchInput.addEventListener('input', () => {
     debounceTimer = setTimeout(async() => {
         // If a location is selected, bias the autocomplete results towards that location
         if (selectedLocation) {
-            requestBody.biasLat = selectedLocation.lat;
-            requestBody.biasLng = selectedLocation.lng;
+            requestBody.biasLatitude = selectedLocation.latitude;
+            requestBody.biasLongitude = selectedLocation.longitude;
         }
         try {
             const response = await fetch('/autocomplete', {
@@ -41,7 +41,7 @@ searchInput.addEventListener('input', () => {
     }, 300);
 });
 
-document.addEventListener('click', (e) => {
+document.addEventListener('mousedown', (e) => {
     if (!e.target.closest('#autocomplete-wrapper')) {
         autocompleteWrapper.classList.toggle('is-open', false);
         clearSuggestions();
@@ -50,7 +50,6 @@ document.addEventListener('click', (e) => {
 
 function renderSuggestions(suggestions) {
     clearSuggestions();
-    autocompleteWrapper.classList.toggle('is-open', false);
 
     if (!suggestions || suggestions.length === 0) return;
 
@@ -64,16 +63,38 @@ function renderSuggestions(suggestions) {
         const item = document.createElement('li');
         item.className = 'autocomplete-item';
         item.textContent = s.address;
-        item.addEventListener('click', () => onSuggestionClick(s));
+        item.addEventListener('click', async () => {
+            searchInput.value = s.address;
+
+            try {
+                const response = await fetch('/resolve-location', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ placeId: s.placeId })
+                });
+
+                if (!response.ok) throw new Error("Failed to resolve location");
+
+                selectedLocation = await response.json();
+
+                showActionButton(); // <-- Button appears here
+
+            } catch (err) {
+                console.error("Error resolving location:", err);
+            }
+        });
         list.appendChild(item);
     });
     document.getElementById('autocomplete-wrapper').appendChild(list);
+    
     autocompleteWrapper.classList.toggle('is-open', true);
+    console.log("Appending list:", list);
+
 }
 
 async function onSuggestionSelected(suggestion) {
+    removeActionButton();
     searchInput.value = suggestion.address;
-    clearBtn.style.display = 'block';
     clearSuggestions();
     autocompleteWrapper.classList.toggle('is-open', false);
 
@@ -88,6 +109,11 @@ async function onSuggestionSelected(suggestion) {
 
         selectedLocation = await response.json();
         showActionButton();
+        searchInput.addEventListener('input', () => {
+            removeActionButton();   // Hide button while typing
+            selectedLocation = null; // Address is no longer valid
+        });
+
     } catch (error) {
         console.error('Error resolving location:', error);
         removeActionButton();
@@ -108,23 +134,28 @@ function showActionButton() {
         if (!selectedLocation) return;
 
         // Collect all filter values
-        const radiusMiles = document.querySelector('input[name="radius"]:checked')?.value || '5';
+        const radiusMiles = document.querySelector('input[name="radius"]:checked')?.value || '';
         const cuisine = document.querySelector('input[name="cuisine"]:checked')?.value || '';
         const price = document.querySelector('input[name="price"]:checked')?.value || '';
         const minRating = document.querySelector('input[name="minRating"]:checked')?.value || '';
         const openNow = document.querySelector('input[name="openNow"]:checked')?.value === 'true';
 
         const requestBody = {
-            location: {
-                lat: selectedPlace.lat,
-                lng: selectedPlace.lng
+            "locationRestriction": {
+                "circle": {
+                    "center": {
+                        "latitude": selectedLocation.latitude,
+                        "longitude": selectedLocation.longitude
+                    },
+                    "radius": parseFloat(radiusMiles)
+                }
             },
-            radiusMiles: parseFloat(radiusMiles),
-            cuisineTypes: cuisine ? [cuisine] : [],
-            priceLevels: price ? [price] : [],
-            minimumRating: minRating ? parseFloat(minRating) : null,
-            openNow: openNow
+            "types": cuisine ? [cuisine] : [],
+            "priceLevel": price ? [price] : [],
+            "rating": minRating ? parseFloat(minRating) : null,
+            "openNow": openNow
         };
+        console.log(requestBody);
 
         try {
             const response = await fetch('/pick', {
@@ -143,8 +174,7 @@ function showActionButton() {
             showResult(restaurant);
 
         } catch (error) {
-            console.error('Error fetching restaurants:', error);
-            showResult('Failed to fetch restaurant suggestions');
+            console.error('Error sending address:', error);
         }
     });
 }
@@ -183,7 +213,7 @@ function clearSuggestions() {
 
 function formatPriceLevel(priceLevel) {
     const priceLevels = {
-        'PRICE_LEVEL_ANY': 'Any Price',
+        'PRICE_LEVEL_UNSPECIFIED': 'Any Price',
         'PRICE_LEVEL_INEXPENSIVE': '$',
         'PRICE_LEVEL_MODERATE': '$$',
         'PRICE_LEVEL_EXPENSIVE': '$$$',

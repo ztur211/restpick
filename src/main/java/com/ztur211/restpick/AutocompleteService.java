@@ -89,19 +89,23 @@ public class AutocompleteService {
         }
     }
     public Map<String, Double> getLocation(String placeId) {
+        String url = PLACE_DETAILS_URL + placeId + "?fields=location";
+
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-Goog-Api-Key", apiKey);
-        headers.set("X-Goog-Api-FieldMask", "location");
+        headers.set("X-Goog-FieldMask", "location");
 
         HttpEntity<Void> request = new HttpEntity<>(headers);
         try {
             ResponseEntity<Map> response = restTemplate.exchange(
-                PLACE_DETAILS_URL + placeId,
+                url,
                 HttpMethod.GET,
                 request,
                 Map.class
             );
+
+            System.out.println("=== RAW PLACE DETAILS RESPONSE ===");
+            System.out.println(response.getBody());
 
             Map<String, Object> body = response.getBody();
             if (body == null || !body.containsKey("location")) {
@@ -109,10 +113,10 @@ public class AutocompleteService {
             }
             System.out.println("Place details response: " + body);
 
-            Map<String, Double> location = (Map<String, Double>) body.get("location");
+            Map<String, Object> location = (Map<String, Object>) body.get("location");
             return Map.of(
-                "latitude", location.get("latitude"),
-                "longitude", location.get("longitude")
+                "latitude", ((Number) location.get("latitude")).doubleValue(),
+                "longitude", ((Number) location.get("longitude")).doubleValue()
             );
 
         } catch (Exception e) {
