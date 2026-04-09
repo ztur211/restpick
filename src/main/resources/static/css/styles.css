@@ -36,6 +36,11 @@ body {
     border-radius: 1rem 1rem 1rem 1rem !important;
 }
 
+#autocomplete-wrapper {
+    position: relative;
+    overflow: visible;
+}
+
 #autocomplete-wrapper .rounded-pill {
     border-radius: 1rem 1rem 1rem 1rem;
 }
@@ -54,6 +59,15 @@ body {
     padding-left: 48px; /* Pad text past search icon */
 }
 
+.autocomplete-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.autocomplete-item:hover, .autocomplete-item.highlighted {
+    background-color: #f0f0f0;
+}
 
 .autocomplete-item + .autocomplete-item {
     border-top: 1px solid #9aa0a6;
