@@ -115,14 +115,27 @@ public class RestaurantService {
 
             // Pick random restaurant
             Place randomPlace = places.get(new Random().nextInt(places.size()));
+
+            String mapUrl =
+                "https://maps.googleapis.com/maps/api/staticmap"
+                + "?center=" + randomPlace.getLocation().getLatitude() + "," + randomPlace.getLocation().getLongitude()
+                + "&zoom=17"
+                + "&size=600x300"
+                + "&maptype=satellite"
+                + "&markers=color:red%7C" + randomPlace.getLocation().getLatitude() + "," + randomPlace.getLocation().getLongitude()
+                + "&key=" + apiKey;
             
             return new Restaurant(
                 randomPlace.getDisplayName().getText(),
                 randomPlace.getFormattedAddress(),
                 randomPlace.getWebsiteUri(),
                 randomPlace.getRating(),
-                randomPlace.getPriceLevel()
+                randomPlace.getPriceLevel(),
+                randomPlace.getLocation().getLatitude(),
+                randomPlace.getLocation().getLongitude(),
+                mapUrl
             );
+
         } catch (Exception e) {
             throw new RuntimeException("Error fetching restaurants: " + e.getMessage());
         }

@@ -58,39 +58,19 @@ function renderSuggestions(suggestions) {
     list.classList.add('bg-white', 'list-unstyled', 'position-absolute', 'border', 'w-100', 'mt-0', 'overflow-hidden');
     console.log('Rendering suggestions:', suggestions);
     
-
     suggestions.forEach(s => {
         const item = document.createElement('li');
         item.className = 'autocomplete-item';
         item.textContent = s.address;
-        item.addEventListener('click', async () => {
-            searchInput.value = s.address;
+        item.addEventListener('click', () => onSuggestionSelected(s));
 
-            try {
-                const response = await fetch('/resolve-location', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ placeId: s.placeId })
-                });
-
-                if (!response.ok) throw new Error("Failed to resolve location");
-
-                selectedLocation = await response.json();
-
-                showActionButton(); // <-- Button appears here
-
-            } catch (err) {
-                console.error("Error resolving location:", err);
-            }
-        });
         list.appendChild(item);
     });
-    document.getElementById('autocomplete-wrapper').appendChild(list);
-    
+    autocompleteWrapper.appendChild(list);
     autocompleteWrapper.classList.toggle('is-open', true);
     console.log("Appending list:", list);
-
 }
+
 
 async function onSuggestionSelected(suggestion) {
     removeActionButton();
@@ -157,7 +137,17 @@ function showActionButton() {
         };
         console.log(requestBody);
 
+
         try {
+            const modal = new bootstrap.Modal(document.getElementById('restaurantModal'));
+            document.getElementById('modal-title').textContent = "Finding a restaurant...";
+            document.getElementById('modal-body').innerHTML = `
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-3">Searching nearby restaurants...</p>
+                </div>
+            `;
+            modal.show();
             const response = await fetch('/pick', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -223,17 +213,18 @@ function formatPriceLevel(priceLevel) {
 }
 
 function showResult(restaurant) {
-    const resultDiv = document.getElementById('result-container');
-    
-    if (typeof restaurant === 'string') {
-        resultDiv.innerHTML = `<div class="alert alert-info" role="alert">${restaurant}</div>`;
-        return;
-    }
-    resultDiv.innerHTML = `
-        <h2>${restaurant.displayName}</h2>
-        <p>Rating: ${restaurant.rating ?? 'N/A'}</p>
-        <p>${restaurant.formattedAddress}</p>
-        <p>Price: ${formatPriceLevel(restaurant.priceLevel)}</p>
-        ${restaurant.websiteUri ? `<a href="${restaurant.websiteUri}" target="_blank">Visit Website</a>` : ''}
+    const title = document.getElementById('modal-title');
+    const body = document.getElementById('modal-body');
+
+    title.textContent = restaurant.displayName;
+
+    body.innerHTML = `
+        <p><strong>Rating:</strong> ${restaurant.rating ?? 'N/A'}</p>
+        <p><strong>Address:</strong> ${restaurant.formattedAddress}</p>
+        <p><strong>Price:</strong> ${formatPriceLevel(restaurant.priceLevel)}</p>
+        ${restaurant.websiteUri ? `<p><a href="${restaurant.websiteUri}" target="_blank">Visit Website</a></p>` : ''}
+
+        <h5 class="mt-4">Location</h5>
+        <img src="${restaurant.mapUrl}" alt="Map view" class="img-fluid rounded border">
     `;
 }
