@@ -122,6 +122,5 @@ public class AutocompleteService {
         } catch (Exception e) {
             throw new RuntimeException("Error fetching place details: " + e.getMessage());
         }
-
     }
 }
