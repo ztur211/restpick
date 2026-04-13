@@ -116,14 +116,18 @@ public class RestaurantService {
             // Pick random restaurant
             Place randomPlace = places.get(new Random().nextInt(places.size()));
 
-            String mapUrl =
-                "https://maps.googleapis.com/maps/api/staticmap"
-                + "?center=" + randomPlace.getLocation().getLatitude() + "," + randomPlace.getLocation().getLongitude()
-                + "&zoom=17"
-                + "&size=600x300"
-                + "&maptype=satellite"
-                + "&markers=color:red%7C" + randomPlace.getLocation().getLatitude() + "," + randomPlace.getLocation().getLongitude()
-                + "&key=" + apiKey;
+            String mapProxyUrl = 
+                "/map-image?latitude=" + 
+                randomPlace.getLocation().getLatitude() + 
+                "&longitude=" + 
+                randomPlace.getLocation().getLongitude() + 
+                "&zoom=18" + 
+                "&size=300x600" + 
+                "&maptype=satellite" + 
+                "&markers=size:mid|color:red|" + 
+                randomPlace.getLocation().getLatitude() +
+                "," + 
+                randomPlace.getLocation().getLongitude();
             
             return new Restaurant(
                 randomPlace.getDisplayName().getText(),
@@ -133,7 +137,7 @@ public class RestaurantService {
                 randomPlace.getPriceLevel(),
                 randomPlace.getLocation().getLatitude(),
                 randomPlace.getLocation().getLongitude(),
-                mapUrl
+                mapProxyUrl
             );
 
         } catch (Exception e) {

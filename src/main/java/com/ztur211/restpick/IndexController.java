@@ -5,8 +5,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 
 import java.util.Map;
+
 
 
 
@@ -85,5 +90,24 @@ public class IndexController {
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @GetMapping("/map-image")
+    public ResponseEntity<byte[]> getMapImage(@RequestParam Double latitude, @RequestParam Double longitude) {
+        String mapUrl = "https://maps.googleapis.com/maps/api/staticmap"
+                + "?center=" + latitude + "," + longitude
+                + "&zoom=18"
+                + "&size=300x600"
+                + "&maptype=satellite"
+                + "&markers=color:red%7C" + latitude + "," + longitude
+                + "&key=" + apiKey;
+
+        RestTemplate restTemplate = new RestTemplate();
+        byte[] imageBytes = restTemplate.getForObject(mapUrl, byte[].class);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.IMAGE_PNG);
+
+        return new ResponseEntity<>(imageBytes, headers, HttpStatus.OK);
     }
 }
