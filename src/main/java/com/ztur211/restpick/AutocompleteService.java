@@ -28,16 +28,20 @@ public class AutocompleteService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-Goog-Api-Key", apiKey);
+        headers.set("X-Goog-FieldMask",
+                "suggestions.placePrediction.placeId," +
+                "suggestions.placePrediction.structuredFormat.mainText," +
+                "suggestions.placePrediction.structuredFormat.secondaryText"
+        );
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("input", input);
-
         payload.put("languageCode", apiLanguage);
-        
         // Separate region codes by comma
         List<String> regionCodes = Arrays.asList(apiRegion.split(","));
         payload.put("includedRegionCodes", regionCodes);
-
+        payload.put("includeQueryPredictions", false);
+        payload.put("sessionToken", UUID.randomUUID().toString());
         
         System.out.println("Input: " + input);
 
@@ -53,7 +57,7 @@ public class AutocompleteService {
             );
             // Location bias = bias towards location but not a hard restriction
             // Location restriction = hard restriction to only return results within the specified area
-            payload.put("locationBias", locationBias);
+            // payload.put("locationBias", locationBias);
         }
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
         System.out.println("Request payload and headers: " + payload + headers);
@@ -66,21 +70,40 @@ public class AutocompleteService {
                 AutocompleteResponse.class
             );
 
+            
+            /*System.out.println("=== RAW AUTOCOMPLETE JSON ===");
+            System.out.println(response.getBody()); */
+
+            
             AutocompleteResponse body = response.getBody();
             if (body == null || body.getSuggestions() == null) {
-                System.out.println("No suggestions found in response: " + response);
                 return Collections.emptyList();
             }
 
+
             List<AutocompleteSuggestion> results = new ArrayList<>();
+
             for (AutocompleteResponse.Suggestion suggestion : body.getSuggestions()) {
                 AutocompleteResponse.PlacePrediction prediction = suggestion.getPlacePrediction();
-                if (prediction != null) {
-                    String placeId = prediction.getPlaceId();
-                    String address = prediction.getText() != null ? prediction.getText().getText() : "";
-                    System.out.println("Suggestion: " + address + " (placeId: " + placeId + ")");
-                    results.add(new AutocompleteSuggestion(placeId, address));
+                if (prediction == null) continue;
+
+                String placeId = prediction.getPlaceId();
+
+                String main = "";
+                String secondary = "";
+
+                if (prediction.getStructuredFormat() != null) {
+                    if (prediction.getStructuredFormat().getMainText() != null) {
+                        main = prediction.getStructuredFormat().getMainText().getText();
+                    }
+                    if (prediction.getStructuredFormat().getSecondaryText() != null) {
+                        secondary = prediction.getStructuredFormat().getSecondaryText().getText();
+                    }
                 }
+
+                System.out.println("Suggestion: " + main + " | " + secondary + " (placeId: " + placeId + ")");
+
+                results.add(new AutocompleteSuggestion(main, secondary, placeId));
             }
             return results;
 
@@ -89,7 +112,7 @@ public class AutocompleteService {
         }
     }
     public Map<String, Double> getLocation(String placeId) {
-        String url = PLACE_DETAILS_URL + placeId + "?fields=location";
+        String url = PLACE_DETAILS_URL + placeId;
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Goog-Api-Key", apiKey);
@@ -109,14 +132,14 @@ public class AutocompleteService {
 
             Map<String, Object> body = response.getBody();
             if (body == null || !body.containsKey("location")) {
-                throw new RuntimeException("No location data found for place ID: " + placeId);
+                throw new RuntimeException("No location data found for placeId: " + placeId);
             }
             System.out.println("Place details response: " + body);
 
-            Map<String, Object> location = (Map<String, Object>) body.get("location");
+            Map<String, Object> loc = (Map<String, Object>) body.get("location");
             return Map.of(
-                "latitude", ((Number) location.get("latitude")).doubleValue(),
-                "longitude", ((Number) location.get("longitude")).doubleValue()
+                "latitude", ((Number) loc.get("latitude")).doubleValue(),
+                "longitude", ((Number) loc.get("longitude")).doubleValue()
             );
 
         } catch (Exception e) {

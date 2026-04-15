@@ -1,20 +1,23 @@
 package com.ztur211.restpick;
 
 public class AutocompleteSuggestion {
+    private String mainText;
+    private String secondaryText;
     private String placeId;
-    private String address;
 
-    public AutocompleteSuggestion(String placeId, String address) {
+    public AutocompleteSuggestion(String mainText, String secondaryText, String placeId) {
+        this.mainText = mainText;
+        this.secondaryText = secondaryText;
         this.placeId = placeId;
-        this.address = address;
     }
 
+    public String getMainText() {
+        return mainText;
+    }
+    public String getSecondaryText() {
+        return secondaryText;
+    }
     public String getPlaceId() {
         return placeId;
     }
-
-    public String getAddress() {
-        return address;
-    }
-
 }

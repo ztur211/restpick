@@ -80,7 +80,8 @@ public class RestaurantService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-Goog-Api-Key", apiKey);
-        headers.set("X-Goog-FieldMask", "places.displayName,places.formattedAddress,places.websiteUri," + "places.rating,places.priceLevel,places.location");
+        headers.set("X-Goog-FieldMask", "places.name,places.displayName,places.formattedAddress,places.websiteUri,places.rating,places.priceLevel,places.location");
+
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
@@ -95,7 +96,6 @@ public class RestaurantService {
             );
             System.out.println("=== GOOGLE PLACES RAW RESPONSE ===");
             System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(response.getBody()));
-
 
             List<Place> places = response.getBody().getPlaces();
 
@@ -115,31 +115,48 @@ public class RestaurantService {
 
             // Pick random restaurant
             Place randomPlace = places.get(new Random().nextInt(places.size()));
-
-            String mapProxyUrl = 
-                "/map-image?latitude=" + 
-                randomPlace.getLocation().getLatitude() + 
-                "&longitude=" + 
-                randomPlace.getLocation().getLongitude() + 
-                "&zoom=18" + 
-                "&size=300x600" + 
-                "&maptype=satellite" + 
-                "&markers=size:mid|color:red|" + 
-                randomPlace.getLocation().getLatitude() +
-                "," + 
-                randomPlace.getLocation().getLongitude();
             
-            return new Restaurant(
-                randomPlace.getDisplayName().getText(),
-                randomPlace.getFormattedAddress(),
-                randomPlace.getWebsiteUri(),
-                randomPlace.getRating(),
-                randomPlace.getPriceLevel(),
-                randomPlace.getLocation().getLatitude(),
-                randomPlace.getLocation().getLongitude(),
-                mapProxyUrl
+            // Fetch full details for the selected restaurant
+            String detailsUrl = "https://places.googleapis.com/v1/" + randomPlace.getName();
+
+            HttpHeaders detailsHeaders = new HttpHeaders();
+            detailsHeaders.set("X-Goog-Api-Key", apiKey);
+            detailsHeaders.set("X-Goog-FieldMask",
+                    "displayName,formattedAddress,websiteUri,rating,userRatingCount,priceLevel,location,photos");
+
+            HttpEntity<Void> detailsRequest = new HttpEntity<>(detailsHeaders);
+
+            ResponseEntity<PlaceDetailsResponse> detailsResponse = restTemplate.exchange(
+                    detailsUrl,
+                    HttpMethod.GET,
+                    detailsRequest,
+                    PlaceDetailsResponse.class
             );
 
+            PlaceDetailsResponse details = detailsResponse.getBody();
+
+            List<String> photoRefs = new ArrayList<>();
+            if (details.getPhotos() != null) {
+                for (PlaceDetailsResponse.Photo p : details.getPhotos()) {
+                    if (p.getName() != null) {
+                        photoRefs.add(p.getName());
+                    }
+                }
+            }
+            // System.out.println("Photos: " + randomPlace.getPhotos());
+            return new Restaurant(
+                    randomPlace.getName(),
+                    details.getDisplayName().getText(),
+                    details.getFormattedAddress(),
+                    details.getWebsiteUri(),
+                    details.getRating(),
+                    details.getUserRatingCount(),
+                    details.getPriceLevel(),
+                    details.getLocation().getLatitude(),
+                    details.getLocation().getLongitude(),
+                    currentSearch.getUserAddress(),
+                    photoRefs
+            );
         } catch (Exception e) {
             throw new RuntimeException("Error fetching restaurants: " + e.getMessage());
         }

@@ -26,8 +26,8 @@ public class AutocompleteResponse {
     }
 
     public static class PlacePrediction {
-        private String placeId;
-        private TextBlock text;
+        private String placeId; // Places Autocomplete uses place_id and not name
+        private StructuredFormat structuredFormat;
 
         public String getPlaceId() {
             return placeId;
@@ -36,13 +36,33 @@ public class AutocompleteResponse {
             this.placeId = placeId;
         }
 
-        public TextBlock getText() {
-            return text;
+        public StructuredFormat getStructuredFormat() {
+            return structuredFormat;
         }
-        public void setText(TextBlock text) {
-            this.text = text;
+        public void setStructuredFormat(StructuredFormat structuredFormat) {
+            this.structuredFormat = structuredFormat;
         }
     }
+
+    public static class StructuredFormat {
+        private TextBlock mainText;
+        private TextBlock secondaryText;
+
+        public TextBlock getMainText() {
+            return mainText;
+        }
+        public void setMainText(TextBlock mainText) {
+            this.mainText = mainText;
+        }
+
+        public TextBlock getSecondaryText() {
+            return secondaryText;
+        }
+        public void setSecondaryText(TextBlock secondaryText) {
+            this.secondaryText = secondaryText;
+        }
+    }
+
     // Need TextBlock because text in Google API response is a nested object and not a plain string
     public static class TextBlock {
         private String text;

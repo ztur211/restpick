@@ -10,6 +10,7 @@ public class SearchRequest {
     private List<String> types;
     private List<String> priceLevel;
     private Double rating; // Lowercase d == raw numeric type, uppercase D == wrapper class that can be null
+    private String userAddress;
 
     public LocationRestriction getLocationRestriction() {
         return locationRestriction;
@@ -99,5 +100,12 @@ public class SearchRequest {
         public void setLongitude(double longitude) {
             this.longitude = longitude;
         }
+    }
+
+    public String getUserAddress () {
+        return userAddress;
+    }
+    public void setUserAddress (String userAddress) {
+        this.userAddress = userAddress;
     }
 }

@@ -49,32 +49,38 @@ document.addEventListener('mousedown', (e) => {
 });
 
 function renderSuggestions(suggestions) {
-    clearSuggestions();
+    let list = document.getElementById('autocomplete-list');
 
-    if (!suggestions || suggestions.length === 0) return;
+    if (!list) {
+        list = document.createElement('div');
+        list.id = 'autocomplete-list';
+        list.className = 'autocomplete-list';
+        autocompleteWrapper.appendChild(list);
+    }
 
-    const list = document.createElement('ul');
-    list.id = 'autocomplete-list';
-    list.classList.add('bg-white', 'list-unstyled', 'position-absolute', 'border', 'w-100', 'mt-0', 'overflow-hidden');
-    console.log('Rendering suggestions:', suggestions);
-    
+    list.innerHTML = '';
+
     suggestions.forEach(s => {
-        const item = document.createElement('li');
-        item.className = 'autocomplete-item';
-        item.textContent = s.address;
-        item.addEventListener('click', () => onSuggestionSelected(s));
+        const item = document.createElement('div');
+        item.classList.add('autocomplete-item');
 
+        item.innerHTML = `
+            <div class="main-text">${s.mainText}</div>
+            <div class="secondary-text">${s.secondaryText || ''}</div>
+        `;
+
+        item.addEventListener('click', () => onSuggestionSelected(s));
         list.appendChild(item);
     });
-    autocompleteWrapper.appendChild(list);
-    autocompleteWrapper.classList.toggle('is-open', true);
-    console.log("Appending list:", list);
+
+    autocompleteWrapper.classList.add('is-open');
 }
 
 
 async function onSuggestionSelected(suggestion) {
     removeActionButton();
-    searchInput.value = suggestion.address;
+    searchInput.value = suggestion.mainText + 
+        (suggestion.secondaryText ? "," + suggestion.secondaryText : "");
     clearSuggestions();
     autocompleteWrapper.classList.toggle('is-open', false);
 
@@ -82,7 +88,7 @@ async function onSuggestionSelected(suggestion) {
         const response = await fetch('/resolve-location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ placeId: suggestion.placeId })
+            body: JSON.stringify({ name: suggestion.placeId })
         });
 
         if (!response.ok) throw new Error('Failed to resolve location');
@@ -91,13 +97,21 @@ async function onSuggestionSelected(suggestion) {
         showActionButton();
         searchInput.addEventListener('input', () => {
             removeActionButton();   // Hide button while typing
-            selectedLocation = null; // Address is no longer valid
+            if (!selectedLocation) {
+                alert("Please select an address from the suggestions first.");
+                return;
+            }
         });
 
     } catch (error) {
         console.error('Error resolving location:', error);
         removeActionButton();
     }
+    closeAutocompleteList();
+
+    console.log("Selected placeId:", suggestion.placeId);
+
+    resolveLocation(suggestion.placeId);
 }
 
 function showActionButton() {
@@ -121,19 +135,20 @@ function showActionButton() {
         const openNow = document.querySelector('input[name="openNow"]:checked')?.value === 'true';
 
         const requestBody = {
-            "locationRestriction": {
-                "circle": {
-                    "center": {
-                        "latitude": selectedLocation.latitude,
-                        "longitude": selectedLocation.longitude
+            userAddress: searchInput.value,
+            locationRestriction: {
+                circle: {
+                    center: {
+                        latitude: selectedLocation.latitude,
+                        longitude: selectedLocation.longitude
                     },
-                    "radius": parseFloat(radiusMiles)
+                    radius: radiusMiles ? parseFloat(radiusMiles) : 5 // Default radius
                 }
             },
-            "types": cuisine ? [cuisine] : [],
-            "priceLevel": price ? [price] : [],
-            "rating": minRating ? parseFloat(minRating) : null,
-            "openNow": openNow
+            types: cuisine ? [cuisine] : [],
+            priceLevel: price ? [price] : [],
+            rating: minRating ? parseFloat(minRating) : null,
+            openNow: openNow
         };
         console.log(requestBody);
 
@@ -177,11 +192,19 @@ function removeActionButton() {
 }
 
 function clearSuggestions() {
-    const existingList = document.getElementById('autocomplete-list');
-    if (existingList) {
-        existingList.remove();
+    let list = document.getElementById('autocomplete-list');
+    if (list) {
+        list.innerHTML = '';
+        return;
     }
+
+    // If it doesn't exist, create it
+    list = document.createElement('div');
+    list.id = 'autocomplete-list';
+    list.className = 'autocomplete-list';
+    autocompleteWrapper.appendChild(list);
 }
+
 
 // Update all dropdown button labels when a radio is selected
 ['cuisine', 'minRating', 'price', 'openNow', 'radius'].forEach(name => {
@@ -212,19 +235,113 @@ function formatPriceLevel(priceLevel) {
     return priceLevels[priceLevel] ?? 'N/A';
 }
 
+function renderStars(rating) {
+    const fullStars = Math.floor(rating);
+    const halfStar = rating % 1 >= 0.5;
+    const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+
+    return `
+        ${'★'.repeat(fullStars)}
+        ${halfStar ? '☆' : ''}
+        ${'✩'.repeat(emptyStars)}
+    `.replace(/\s+/g, '');
+}
+
 function showResult(restaurant) {
     const title = document.getElementById('modal-title');
     const body = document.getElementById('modal-body');
+    const stars = renderStars(restaurant.rating);
+    const reviewCount = restaurant.ratingCount ?? 0;
+    const googleName = restaurant.name.replace("places/", "");
+    const googleMapsUrl = `https://www.google.com/maps/place/?q=place_id:${googleName}`;
 
-    title.textContent = restaurant.displayName;
+    title.innerHTML = `
+        <a href="${restaurant.websiteUri || googleMapsUrl}" 
+        target="_blank" 
+        class="restaurant-title-link">
+            ${restaurant.displayName}
+            <span class="external-icon">↗</span>
+        </a>
+    `;
+
+    const reviewsUrl = `https://www.google.com/maps/place/?q=place_id:${googleName}&entry=ttu&lrd=${googleName},1`;
+    const mapUrl = `/map-image?latitude=${restaurant.latitude}&longitude=${restaurant.longitude}`;
+    const directionsUrl = `https://www.google.com/maps/dir/?api=1` + 
+        `&origin=${encodeURIComponent(restaurant.originAddress)}` + 
+        `&destination=${restaurant.latitude},${restaurant.longitude}`;
+
+    const hasPhotos = Array.isArray(restaurant.photos) && restaurant.photos.length > 0;
+
+    const photoCarousel = hasPhotos
+        ? `
+            <div id="photoCarousel" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    ${restaurant.photos.map((p, i) => `
+                        <div class="carousel-item ${i === 0 ? 'active' : ''}">
+                            <img src="/photo?photoRef=${p}" class="d-block w-100 rounded">
+                        </div>
+                    `).join('')}
+                </div>
+                <button class="carousel-control-prev" type="button" data-bs-target="#photoCarousel" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon"></span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#photoCarousel" data-bs-slide="next">
+                    <span class="carousel-control-next-icon"></span>
+                </button>
+            </div>
+        `
+        : `<p>No photos available</p>`;
+
+    title.innerHTML = `
+        <a href="${restaurant.websiteUri || googleMapsUrl}" 
+        target="_blank" 
+        class="restaurant-title-link">
+            ${restaurant.displayName}
+            <span class="external-icon">↗</span>
+        </a>
+    `;
 
     body.innerHTML = `
-        <p><strong>Rating:</strong> ${restaurant.rating ?? 'N/A'}</p>
-        <p><strong>Address:</strong> ${restaurant.formattedAddress}</p>
-        <p><strong>Price:</strong> ${formatPriceLevel(restaurant.priceLevel)}</p>
-        ${restaurant.websiteUri ? `<p><a href="${restaurant.websiteUri}" target="_blank">Visit Website</a></p>` : ''}
+        <div class="row equal-row">
+            <div class="col-md-8 pb-3">
 
-        <h5 class="mt-4">Location</h5>
-        <img src="${restaurant.mapUrl}" alt="Map view" class="img-fluid rounded border">
+                <div class="d-flex align-items-center mb-2">
+                    <span style="font-size: 1.4rem; font-weight:600;">${restaurant.rating}</span>
+                    <span class="ms-2" style="color:#fbbc04; font-size:1.4rem;">${stars}</span>
+
+                    <a href="${reviewsUrl}" 
+                       target="_blank" 
+                       class="text-muted ms-2"
+                       style="font-size:0.95rem; text-decoration: underline;">
+                       (${reviewCount} reviews)
+                    </a>
+                </div>
+
+                <p class="mb-1">
+                    <span style="font-size: 1.2rem;">📍</span>
+                    ${restaurant.formattedAddress}
+                </p>
+
+                <p class="mb-3">
+                    <span style="font-size: 1.2rem;">💲</span>
+                    ${formatPriceLevel(restaurant.priceLevel)}
+                </p>
+                <div class="carousel-wrapper">
+                    ${photoCarousel}
+                </div>
+
+            </div>
+
+            <div class="col-md-4 pb-3">
+                <img src="${mapUrl}" alt="Map view" class="img-fluid rounded border map-image">           
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <a href="${directionsUrl}" target="_blank" class="btn btn-success w-100">
+                    Get Directions
+                </a>
+            </div>
+        </div>
     `;
 }

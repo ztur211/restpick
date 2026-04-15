@@ -15,6 +15,7 @@ import java.util.Map;
 
 
 
+
 // Controller class to handle web requests for the restaurant picker application
 @Controller // Marks the class as a REST controller
 public class IndexController {
@@ -48,8 +49,8 @@ public class IndexController {
             return ResponseEntity.badRequest().body(Map.of("error", "Input is required"));
         }
         
-        Double biasLat = body.get("biasLat") != null ? ((Number) body.get("biasLat")).doubleValue() : null;
-        Double biasLng = body.get("biasLng") != null ? ((Number) body.get("biasLng")).doubleValue() : null;
+        Double biasLat = body.get("biasLatitude") != null ? ((Number) body.get("biasLatitude")).doubleValue() : null;
+        Double biasLng = body.get("biasLongitude") != null ? ((Number) body.get("biasLongitude")).doubleValue() : null;
 
         try {
             System.out.println("Calling autocomplete service with input: " + input);
@@ -81,12 +82,12 @@ public class IndexController {
     @PostMapping("/resolve-location")
     @ResponseBody
     public ResponseEntity<?> resolveLocation(@RequestBody Map<String, String> body) {
-        String placeId = body.get("placeId");
-        if (placeId == null || placeId.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "placeId is required"));
+        String name = body.get("name");
+        if (name == null || name.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "name is required"));
         }
         try {
-            return ResponseEntity.ok(autocompleteService.getLocation(placeId));
+            return ResponseEntity.ok(autocompleteService.getLocation(name));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -94,13 +95,16 @@ public class IndexController {
 
     @GetMapping("/map-image")
     public ResponseEntity<byte[]> getMapImage(@RequestParam Double latitude, @RequestParam Double longitude) {
-        String mapUrl = "https://maps.googleapis.com/maps/api/staticmap"
-                + "?center=" + latitude + "," + longitude
-                + "&zoom=18"
-                + "&size=300x600"
-                + "&maptype=satellite"
-                + "&markers=color:red%7C" + latitude + "," + longitude
-                + "&key=" + apiKey;
+        String marker = "size:mid|color:red|" + latitude + "," + longitude;
+        String mapUrl = "https://maps.googleapis.com/maps/api/staticmap" 
+        + "?center=" + latitude + "," + longitude 
+        + "&zoom=18" 
+        + "&size=300x600" 
+        + "&maptype=satellite" 
+        + "&markers=" + marker 
+        + "&key=" + apiKey;
+
+        System.out.println("mapUrl:" + mapUrl);
 
         RestTemplate restTemplate = new RestTemplate();
         byte[] imageBytes = restTemplate.getForObject(mapUrl, byte[].class);
@@ -109,5 +113,24 @@ public class IndexController {
         headers.setContentType(MediaType.IMAGE_PNG);
 
         return new ResponseEntity<>(imageBytes, headers, HttpStatus.OK);
+    }
+    @GetMapping("/photo")
+    public ResponseEntity<byte[]> getPhoto(@RequestParam String photoRef) {
+        try {
+            String url = "https://places.googleapis.com/v1/" + photoRef + "/media"
+                    + "?maxWidthPx=800&key=" + apiKey;
+
+            RestTemplate rest = new RestTemplate();
+            byte[] bytes = rest.getForObject(url, byte[].class);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.IMAGE_JPEG);
+
+            return new ResponseEntity<>(bytes, headers, HttpStatus.OK);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }
