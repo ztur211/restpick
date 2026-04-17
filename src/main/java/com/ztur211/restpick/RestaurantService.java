@@ -68,14 +68,6 @@ public class RestaurantService {
             payload.put("openNow", true);
         }
 
-        if (currentSearch.getPriceLevel() != null && !currentSearch.getPriceLevel().isEmpty()) {
-            payload.put("priceLevel", currentSearch.getPriceLevel());
-        }
-
-        if (currentSearch.getRating() != null) {
-            payload.put("rating", currentSearch.getRating());
-        }
-
         // Headers
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -89,6 +81,7 @@ public class RestaurantService {
         System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(payload));
 
         try {
+            // Call Nearby Search
             ResponseEntity<PlacesResponse> response = restTemplate.postForEntity(
                 SEARCH_URL, 
                 request, 
@@ -98,54 +91,62 @@ public class RestaurantService {
             System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(response.getBody()));
 
             List<Place> places = response.getBody().getPlaces();
-
             if (places == null || places.isEmpty()) {
                 throw new RuntimeException("No restaurants found matching the criteria.");
             }
 
-            if (currentSearch.getRating() != null) {
-                places = places.stream()
-                    .filter(p -> p.getRating() != null && p.getRating() >= currentSearch.getRating())
-                    .collect(Collectors.toList());
-            }
-
-            if (places.isEmpty()) {
-                throw new RuntimeException("No restaurants found matching the criteria after applying rating filter.");
-            }
-
-            // Pick random restaurant
-            Place randomPlace = places.get(new Random().nextInt(places.size()));
+             // Fetch details and filter
+            List<Restaurant> filtered = new ArrayList<>();
             
-            // Fetch full details for the selected restaurant
-            String detailsUrl = "https://places.googleapis.com/v1/" + randomPlace.getName();
+            for (Place p : places) {
+                // Fetch full details for the selected restaurant
+                String detailsUrl = "https://places.googleapis.com/v1/" + p.getName();
 
-            HttpHeaders detailsHeaders = new HttpHeaders();
-            detailsHeaders.set("X-Goog-Api-Key", apiKey);
-            detailsHeaders.set("X-Goog-FieldMask",
-                    "displayName,formattedAddress,websiteUri,rating,userRatingCount,priceLevel,location,photos");
+                HttpHeaders detailsHeaders = new HttpHeaders();
+                detailsHeaders.set("X-Goog-Api-Key", apiKey);
+                detailsHeaders.set("X-Goog-FieldMask",
+                        "displayName,formattedAddress,websiteUri,rating,userRatingCount,priceLevel,location,photos");
 
-            HttpEntity<Void> detailsRequest = new HttpEntity<>(detailsHeaders);
+                HttpEntity<Void> detailsRequest = new HttpEntity<>(detailsHeaders);
 
-            ResponseEntity<PlaceDetailsResponse> detailsResponse = restTemplate.exchange(
-                    detailsUrl,
-                    HttpMethod.GET,
-                    detailsRequest,
-                    PlaceDetailsResponse.class
-            );
+                ResponseEntity<PlaceDetailsResponse> detailsResponse = restTemplate.exchange(
+                        detailsUrl,
+                        HttpMethod.GET,
+                        detailsRequest,
+                        PlaceDetailsResponse.class
+                );
 
-            PlaceDetailsResponse details = detailsResponse.getBody();
+                PlaceDetailsResponse details = detailsResponse.getBody();
+                if (details == null) continue;
 
-            List<String> photoRefs = new ArrayList<>();
-            if (details.getPhotos() != null) {
-                for (PlaceDetailsResponse.Photo p : details.getPhotos()) {
-                    if (p.getName() != null) {
-                        photoRefs.add(p.getName());
+                // Apply rating filter
+                Double minRating = currentSearch.getRating();
+                if (minRating != null &&
+                        (details.getRating() == null || details.getRating() < minRating)) {
+                    continue;
+                }
+
+                // Apply price filter
+                List<String> allowedPrices = currentSearch.getPriceLevel();
+                if (allowedPrices != null && !allowedPrices.isEmpty()) {
+                    String placePrice = details.getPriceLevel();
+                    if (placePrice == null || !allowedPrices.contains(placePrice)) {
+                        continue;
                     }
                 }
-            }
-            // System.out.println("Photos: " + randomPlace.getPhotos());
-            return new Restaurant(
-                    randomPlace.getName(),
+                
+                // Get photos
+                List<String> photoRefs = new ArrayList<>();
+                if (details.getPhotos() != null) {
+                    for (PlaceDetailsResponse.Photo photo : details.getPhotos()) {
+                        if (photo.getName() != null) {
+                            photoRefs.add(photo.getName());
+                        }
+                    }
+                }
+                // System.out.println("Photos: " + randomPlace.getPhotos());
+                filtered.add(new Restaurant(
+                    p.getName(),
                     details.getDisplayName().getText(),
                     details.getFormattedAddress(),
                     details.getWebsiteUri(),
@@ -156,7 +157,15 @@ public class RestaurantService {
                     details.getLocation().getLongitude(),
                     currentSearch.getUserAddress(),
                     photoRefs
-            );
+                ));
+            }
+
+            if (filtered.isEmpty()) {
+                throw new RuntimeException("No restaurants matched rating/price filters.");
+            }
+            
+            return filtered.get(new Random().nextInt(filtered.size()));
+
         } catch (Exception e) {
             throw new RuntimeException("Error fetching restaurants: " + e.getMessage());
         }

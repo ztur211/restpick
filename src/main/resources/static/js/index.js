@@ -79,8 +79,7 @@ function renderSuggestions(suggestions) {
 
 async function onSuggestionSelected(suggestion) {
     removeActionButton();
-    searchInput.value = suggestion.mainText + 
-        (suggestion.secondaryText ? "," + suggestion.secondaryText : "");
+    searchInput.value = `${suggestion.mainText}${suggestion.secondaryText ? ", " + suggestion.secondaryText : ""}`.replace(/,\s*/g, ", ");
     clearSuggestions();
     autocompleteWrapper.classList.toggle('is-open', false);
 
@@ -95,23 +94,12 @@ async function onSuggestionSelected(suggestion) {
 
         selectedLocation = await response.json();
         showActionButton();
-        searchInput.addEventListener('input', () => {
-            removeActionButton();   // Hide button while typing
-            if (!selectedLocation) {
-                alert("Please select an address from the suggestions first.");
-                return;
-            }
-        });
 
     } catch (error) {
         console.error('Error resolving location:', error);
         removeActionButton();
     }
-    closeAutocompleteList();
-
     console.log("Selected placeId:", suggestion.placeId);
-
-    resolveLocation(suggestion.placeId);
 }
 
 function showActionButton() {
@@ -125,7 +113,11 @@ function showActionButton() {
     document.getElementById('button-container').appendChild(button);
 
     button.addEventListener('click', async () => {
-        if (!selectedLocation) return;
+        // Ensure that user clicks on address in autocomplete list
+        if (!selectedLocation) {
+            alert("Please select an address from the suggestions first.");
+            return;
+        }
 
         // Collect all filter values
         const radiusMiles = document.querySelector('input[name="radius"]:checked')?.value || '';
@@ -142,7 +134,7 @@ function showActionButton() {
                         latitude: selectedLocation.latitude,
                         longitude: selectedLocation.longitude
                     },
-                    radius: radiusMiles ? parseFloat(radiusMiles) : 5 // Default radius
+                    radius: radiusMiles ? parseFloat(radiusMiles) : 1609.34 // Default radius
                 }
             },
             types: cuisine ? [cuisine] : [],
@@ -171,7 +163,15 @@ function showActionButton() {
 
             if (!response.ok) {
                 const err = await response.json();
-                showResult(`Error: ${err.error}`);
+
+                // Cannot find a restaurant message in modal
+                document.getElementById('modal-title').textContent = "No Restaurants Found";
+                document.getElementById('modal-body').innerHTML = `
+                    <div class="text-center py-4">
+                        <p class="mb-2">No restaurants matched your filters.</p>
+                        <p class="text-muted">Try widening your radius or lowering your rating/price filters.</p>
+                    </div>
+                `;
                 return;
             }
 
@@ -248,6 +248,18 @@ function renderStars(rating) {
 }
 
 function showResult(restaurant) {
+
+    if (!restaurant || restaurant.error || !restaurant.name) {
+        document.getElementById('modal-title').textContent = "No Restaurants Found";
+        document.getElementById('modal-body').innerHTML = `
+            <div class="text-center py-4">
+                <p class="mb-2">No restaurants matched your filters.</p>
+                <p class="text-muted">Try adjusting your search settings.</p>
+            </div>
+        `;
+        return;
+    }
+
     const title = document.getElementById('modal-title');
     const body = document.getElementById('modal-body');
     const stars = renderStars(restaurant.rating);
