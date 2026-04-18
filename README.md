@@ -1,6 +1,6 @@
 # Restaurant Picker Web App
 
-The purpose of this web app was to recreate my CS50x project using Java instead of Python, while also correcting errors made in my CS50x submission.
+The purpose of this web app is to help the user pick a nearby restaurant using an address they enter and filters they select, such as what cuisine they want or how large the search radius is.
 
 #### This app uses the following:
   - Java version 25 - Backend
