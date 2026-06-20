@@ -106,4 +106,30 @@ class RateLimitFilterTest {
         assertTrue(res.getContentType().toLowerCase().contains("utf-8"),
                 "Content-Type should declare charset=UTF-8, was: " + res.getContentType());
     }
+
+    // Behind Cloudflare+Render the per-request proxy IP rotates, but CF-Connecting-IP
+    // is the stable real client. The bucket must key on CF-Connecting-IP.
+    @Test
+    void keysOnCfConnectingIp_despiteRotatingForwardedForAndRemoteAddr() throws Exception {
+        RateLimitFilter filter = new RateLimitFilter(1, 1000); // 1/min per IP
+
+        MockHttpServletRequest r1 = new MockHttpServletRequest();
+        r1.setServletPath("/pick");
+        r1.setRemoteAddr("10.0.0.1");                       // rotating proxy address
+        r1.addHeader("X-Forwarded-For", "172.16.0.1");      // rotating proxy hop
+        r1.addHeader("CF-Connecting-IP", "203.0.113.7");    // stable real client
+        MockHttpServletResponse res1 = new MockHttpServletResponse();
+        filter.doFilter(r1, res1, new CountingChain());
+        assertEquals(200, res1.getStatus());
+
+        MockHttpServletRequest r2 = new MockHttpServletRequest();
+        r2.setServletPath("/pick");
+        r2.setRemoteAddr("10.0.0.2");                       // different proxy address
+        r2.addHeader("X-Forwarded-For", "172.16.0.2");      // different proxy hop
+        r2.addHeader("CF-Connecting-IP", "203.0.113.7");    // SAME real client
+        MockHttpServletResponse res2 = new MockHttpServletResponse();
+        filter.doFilter(r2, res2, new CountingChain());
+        assertEquals(429, res2.getStatus(),
+                "same CF-Connecting-IP must share one bucket despite different X-Forwarded-For/remoteAddr");
+    }
 }
