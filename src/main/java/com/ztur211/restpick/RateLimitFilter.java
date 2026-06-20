@@ -62,7 +62,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         } else {
             response.setStatus(429);
             response.setHeader("Retry-After", "60");
-            response.setContentType("application/json");
+            response.setContentType("application/json;charset=UTF-8");
             response.getWriter().write("{\"error\":\"Rate limit exceeded. Please slow down.\"}");
         }
     }
