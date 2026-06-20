@@ -67,8 +67,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
     }
 
-    /** Client IP: first hop of X-Forwarded-For when present, else the socket address. */
+    /**
+     * Client IP, in priority order:
+     * 1. {@code CF-Connecting-IP} — Cloudflare (which fronts Render) sets this to the
+     *    real client IP; the per-request proxy hops in X-Forwarded-For/remoteAddr rotate.
+     * 2. first hop of {@code X-Forwarded-For} — for non-Cloudflare proxies.
+     * 3. the socket address — for direct connections / local dev.
+     */
     private String clientIp(HttpServletRequest request) {
+        String cfIp = request.getHeader("CF-Connecting-IP");
+        if (cfIp != null && !cfIp.isBlank()) {
+            return cfIp.trim();
+        }
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
             return forwarded.split(",")[0].trim();
