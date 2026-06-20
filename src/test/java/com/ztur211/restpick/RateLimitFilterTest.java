@@ -89,4 +89,21 @@ class RateLimitFilterTest {
             assertEquals(200, res.getStatus());
         }
     }
+
+    @Test
+    void rejectionResponse_declaresUtf8() throws Exception {
+        RateLimitFilter filter = new RateLimitFilter(1, 1000); // 1/min per IP
+
+        // First request consumes the only token.
+        filter.doFilter(req("/pick", "5.5.5.5"), new MockHttpServletResponse(), new CountingChain());
+
+        // Second request is rejected — its body must be served as UTF-8.
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        filter.doFilter(req("/pick", "5.5.5.5"), res, new CountingChain());
+
+        assertEquals(429, res.getStatus());
+        assertEquals("UTF-8", res.getCharacterEncoding());
+        assertTrue(res.getContentType().toLowerCase().contains("utf-8"),
+                "Content-Type should declare charset=UTF-8, was: " + res.getContentType());
+    }
 }
