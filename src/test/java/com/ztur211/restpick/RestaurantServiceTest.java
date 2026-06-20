@@ -1,45 +1,34 @@
 package com.ztur211.restpick;
 
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.reactive.function.client.WebClient;
-import tools.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
 class RestaurantServiceTest {
 
-    private MockWebServer mockWebServer;
+    private static final String SEARCH_URL = "https://places.googleapis.com/v1/places:searchNearby";
+    private static final String DETAILS_BASE = "https://places.googleapis.com/v1/";
+
     private RestaurantService restaurantService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private MockRestServiceServer mockServer;
 
     @BeforeEach
-    void setUp() throws IOException {
-        mockWebServer = new MockWebServer();
-        mockWebServer.start();
-
-        WebClient webClient = WebClient.builder()
-                .baseUrl(mockWebServer.url("/").toString())
-                .build();
-
+    void setUp() {
         restaurantService = new RestaurantService();
-        ReflectionTestUtils.setField(restaurantService, "webClient", webClient);
         ReflectionTestUtils.setField(restaurantService, "apiKey", "test-api-key");
-        ReflectionTestUtils.setField(restaurantService, "baseUrl", mockWebServer.url("").toString().replaceAll("/$", ""));
-    }
-
-    @AfterEach
-    void tearDown() throws IOException {
-        mockWebServer.shutdown();
+        // Bind MockRestServiceServer to the service's real RestTemplate (no production change).
+        RestTemplate restTemplate = (RestTemplate) ReflectionTestUtils.getField(restaurantService, "restTemplate");
+        mockServer = MockRestServiceServer.createServer(restTemplate);
     }
 
     @Test
@@ -54,13 +43,14 @@ class RestaurantServiceTest {
         SearchRequest request = buildSearchRequest(40.7, -74.0, 5.0);
         restaurantService.setSearchRequest(request);
 
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody("{\"places\":[]}"));
+        mockServer.expect(requestTo(SEARCH_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("{\"places\":[]}", MediaType.APPLICATION_JSON));
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> restaurantService.getRandomNearbyRestaurant());
         assertTrue(ex.getMessage().contains("No restaurants found"));
+        mockServer.verify();
     }
 
     @Test
@@ -71,9 +61,9 @@ class RestaurantServiceTest {
 
         String searchResponse = """
                 {"places":[{"name":"places/abc123"}]}""";
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody(searchResponse));
+        mockServer.expect(requestTo(SEARCH_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(searchResponse, MediaType.APPLICATION_JSON));
 
         String detailsResponse = """
                 {
@@ -86,9 +76,9 @@ class RestaurantServiceTest {
                     "location":{"latitude":40.7,"longitude":-74.0},
                     "photos":[]
                 }""";
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody(detailsResponse));
+        mockServer.expect(requestTo(DETAILS_BASE + "places/abc123"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(detailsResponse, MediaType.APPLICATION_JSON));
 
         Restaurant result = restaurantService.getRandomNearbyRestaurant();
 
@@ -96,19 +86,21 @@ class RestaurantServiceTest {
         assertEquals("Test Restaurant", result.getDisplayName());
         assertEquals("123 Main St", result.getFormattedAddress());
         assertEquals(4.5, result.getRating());
+        mockServer.verify();
     }
 
     @Test
-    void getRandomNearbyRestaurant_defaultCuisineWhenNoneSelected() throws Exception {
+    void getRandomNearbyRestaurant_defaultCuisineWhenNoneSelected() {
         SearchRequest request = buildSearchRequest(40.7, -74.0, 5.0);
         request.setTypes(null);
         restaurantService.setSearchRequest(request);
 
         String searchResponse = """
                 {"places":[{"name":"places/abc123"}]}""";
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody(searchResponse));
+        mockServer.expect(requestTo(SEARCH_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.includedTypes[0]").value("restaurant"))
+                .andRespond(withSuccess(searchResponse, MediaType.APPLICATION_JSON));
 
         String detailsResponse = """
                 {
@@ -119,16 +111,13 @@ class RestaurantServiceTest {
                     "location":{"latitude":40.7,"longitude":-74.0},
                     "photos":[]
                 }""";
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody(detailsResponse));
+        mockServer.expect(requestTo(DETAILS_BASE + "places/abc123"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(detailsResponse, MediaType.APPLICATION_JSON));
 
         Restaurant result = restaurantService.getRandomNearbyRestaurant();
         assertNotNull(result);
-
-        var recordedRequest = mockWebServer.takeRequest();
-        String requestBody = recordedRequest.getBody().readUtf8();
-        assertTrue(requestBody.contains("\"restaurant\""));
+        mockServer.verify();
     }
 
     @Test
@@ -137,9 +126,9 @@ class RestaurantServiceTest {
         request.setRating(4.0);
         restaurantService.setSearchRequest(request);
 
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody("{\"places\":[{\"name\":\"places/low-rated\"}]}"));
+        mockServer.expect(requestTo(SEARCH_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("{\"places\":[{\"name\":\"places/low-rated\"}]}", MediaType.APPLICATION_JSON));
 
         String detailsResponse = """
                 {
@@ -150,13 +139,14 @@ class RestaurantServiceTest {
                     "location":{"latitude":40.7,"longitude":-74.0},
                     "photos":[]
                 }""";
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody(detailsResponse));
+        mockServer.expect(requestTo(DETAILS_BASE + "places/low-rated"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(detailsResponse, MediaType.APPLICATION_JSON));
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> restaurantService.getRandomNearbyRestaurant());
         assertTrue(ex.getMessage().contains("No restaurants matched rating/price filters"));
+        mockServer.verify();
     }
 
     @Test
@@ -165,9 +155,9 @@ class RestaurantServiceTest {
         request.setPriceLevel(List.of("PRICE_LEVEL_INEXPENSIVE"));
         restaurantService.setSearchRequest(request);
 
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody("{\"places\":[{\"name\":\"places/expensive\"}]}"));
+        mockServer.expect(requestTo(SEARCH_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("{\"places\":[{\"name\":\"places/expensive\"}]}", MediaType.APPLICATION_JSON));
 
         String detailsResponse = """
                 {
@@ -179,13 +169,14 @@ class RestaurantServiceTest {
                     "location":{"latitude":40.7,"longitude":-74.0},
                     "photos":[]
                 }""";
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody(detailsResponse));
+        mockServer.expect(requestTo(DETAILS_BASE + "places/expensive"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(detailsResponse, MediaType.APPLICATION_JSON));
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> restaurantService.getRandomNearbyRestaurant());
         assertTrue(ex.getMessage().contains("No restaurants matched rating/price filters"));
+        mockServer.verify();
     }
 
     @Test
@@ -193,9 +184,9 @@ class RestaurantServiceTest {
         SearchRequest request = buildSearchRequest(40.7, -74.0, 5.0);
         restaurantService.setSearchRequest(request);
 
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody("{\"places\":[{\"name\":\"places/with-photos\"}]}"));
+        mockServer.expect(requestTo(SEARCH_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("{\"places\":[{\"name\":\"places/with-photos\"}]}", MediaType.APPLICATION_JSON));
 
         String detailsResponse = """
                 {
@@ -206,13 +197,14 @@ class RestaurantServiceTest {
                     "location":{"latitude":40.7,"longitude":-74.0},
                     "photos":[{"name":"places/photos/ref1"},{"name":"places/photos/ref2"}]
                 }""";
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody(detailsResponse));
+        mockServer.expect(requestTo(DETAILS_BASE + "places/with-photos"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(detailsResponse, MediaType.APPLICATION_JSON));
 
         Restaurant result = restaurantService.getRandomNearbyRestaurant();
         assertEquals(2, result.getPhotos().size());
         assertEquals("places/photos/ref1", result.getPhotos().get(0));
+        mockServer.verify();
     }
 
     @Test
