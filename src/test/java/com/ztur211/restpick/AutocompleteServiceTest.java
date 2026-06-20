@@ -1,44 +1,37 @@
 package com.ztur211.restpick;
 
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestTemplate;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
 class AutocompleteServiceTest {
 
-    private MockWebServer mockWebServer;
+    private static final String AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete";
+    private static final String PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/";
+
     private AutocompleteService autocompleteService;
+    private MockRestServiceServer mockServer;
 
     @BeforeEach
-    void setUp() throws IOException {
-        mockWebServer = new MockWebServer();
-        mockWebServer.start();
-
-        WebClient webClient = WebClient.builder()
-                .baseUrl(mockWebServer.url("/").toString())
-                .build();
-
+    void setUp() {
         autocompleteService = new AutocompleteService();
-        ReflectionTestUtils.setField(autocompleteService, "webClient", webClient);
         ReflectionTestUtils.setField(autocompleteService, "apiKey", "test-api-key");
         ReflectionTestUtils.setField(autocompleteService, "apiLanguage", "en");
         ReflectionTestUtils.setField(autocompleteService, "apiRegion", "us");
-        ReflectionTestUtils.setField(autocompleteService, "baseUrl", mockWebServer.url("").toString().replaceAll("/$", ""));
-    }
-
-    @AfterEach
-    void tearDown() throws IOException {
-        mockWebServer.shutdown();
+        // Bind MockRestServiceServer to the service's real RestTemplate (no production change).
+        RestTemplate restTemplate = (RestTemplate) ReflectionTestUtils.getField(autocompleteService, "restTemplate");
+        mockServer = MockRestServiceServer.createServer(restTemplate);
     }
 
     @Test
@@ -66,9 +59,9 @@ class AutocompleteServiceTest {
                         }
                     ]
                 }""";
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody(responseJson));
+        mockServer.expect(requestTo(AUTOCOMPLETE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(responseJson, MediaType.APPLICATION_JSON));
 
         List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("New", null, null);
 
@@ -77,26 +70,29 @@ class AutocompleteServiceTest {
         assertEquals("NY, USA", results.get(0).getSecondaryText());
         assertEquals("placeId1", results.get(0).getPlaceId());
         assertEquals("New Orleans", results.get(1).getMainText());
+        mockServer.verify();
     }
 
     @Test
     void getSuggestions_nullBody_returnsEmptyList() {
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody("null"));
+        mockServer.expect(requestTo(AUTOCOMPLETE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("null", MediaType.APPLICATION_JSON));
 
         List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null);
         assertTrue(results.isEmpty());
+        mockServer.verify();
     }
 
     @Test
     void getSuggestions_nullSuggestions_returnsEmptyList() {
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody("{}"));
+        mockServer.expect(requestTo(AUTOCOMPLETE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
         List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null);
         assertTrue(results.isEmpty());
+        mockServer.verify();
     }
 
     @Test
@@ -116,13 +112,14 @@ class AutocompleteServiceTest {
                         }
                     ]
                 }""";
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody(responseJson));
+        mockServer.expect(requestTo(AUTOCOMPLETE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(responseJson, MediaType.APPLICATION_JSON));
 
         List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null);
         assertEquals(1, results.size());
         assertEquals("Valid", results.get(0).getMainText());
+        mockServer.verify();
     }
 
     @Test
@@ -138,26 +135,28 @@ class AutocompleteServiceTest {
                         }
                     ]
                 }""";
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody(responseJson));
+        mockServer.expect(requestTo(AUTOCOMPLETE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(responseJson, MediaType.APPLICATION_JSON));
 
         List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null);
         assertEquals(1, results.size());
         assertEquals("", results.get(0).getMainText());
         assertEquals("", results.get(0).getSecondaryText());
+        mockServer.verify();
     }
 
     @Test
     void getSuggestions_multipleRegionCodes() {
         ReflectionTestUtils.setField(autocompleteService, "apiRegion", "us,ca,mx");
 
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody("{\"suggestions\":[]}"));
+        mockServer.expect(requestTo(AUTOCOMPLETE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("{\"suggestions\":[]}", MediaType.APPLICATION_JSON));
 
         List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null);
         assertNotNull(results);
+        mockServer.verify();
     }
 
     @Test
@@ -166,35 +165,38 @@ class AutocompleteServiceTest {
                 {
                     "location": {"latitude": 40.7128, "longitude": -74.006}
                 }""";
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody(responseJson));
+        mockServer.expect(requestTo(PLACE_DETAILS_URL + "placeId123"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(responseJson, MediaType.APPLICATION_JSON));
 
         Map<String, Double> result = autocompleteService.getLocation("placeId123");
 
         assertEquals(40.7128, result.get("latitude"));
         assertEquals(-74.006, result.get("longitude"));
+        mockServer.verify();
     }
 
     @Test
     void getLocation_nullBody_throws() {
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody("null"));
+        mockServer.expect(requestTo(PLACE_DETAILS_URL + "placeId123"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("null", MediaType.APPLICATION_JSON));
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> autocompleteService.getLocation("placeId123"));
         assertTrue(ex.getMessage().contains("Error fetching place details"));
+        mockServer.verify();
     }
 
     @Test
     void getLocation_noLocationKey_throws() {
-        mockWebServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody("{}"));
+        mockServer.expect(requestTo(PLACE_DETAILS_URL + "placeId123"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> autocompleteService.getLocation("placeId123"));
         assertTrue(ex.getMessage().contains("Error fetching place details"));
+        mockServer.verify();
     }
 }
