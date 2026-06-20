@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: restpick
+    runtime: docker
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false
