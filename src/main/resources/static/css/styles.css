@@ -102,8 +102,26 @@ body {
 #cuisine-dropdown,
 #hours-dropdown,
 #radius-dropdown {
-    min-width: 110px;
+    /* Fixed, equal width so the buttons never resize as selections change. */
+    width: 150px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     text-align: left;
+}
+
+/* The label fills the middle and truncates with an ellipsis only when it's too
+   long, so the emoji and the dropdown caret stay put no matter what's selected. */
+#price-dropdown span,
+#rating-dropdown span,
+#cuisine-dropdown span,
+#hours-dropdown span,
+#radius-dropdown span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .carousel-wrapper {
