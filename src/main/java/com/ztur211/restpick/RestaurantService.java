@@ -8,7 +8,6 @@ import org.springframework.web.client.RestTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 // Service class that contains the business logic for fetching nearby restaurants based on user criteria and picking a random one
 @Service
@@ -58,7 +57,7 @@ public class RestaurantService {
         payload.put("maxResultCount", MAX_RESULTS);
         payload.put("locationRestriction", Map.of(
             "circle", Map.of(
-                "center", Map.of("latitude", latitude, "longitude", longitude), 
+                "center", Map.of("latitude", latitude, "longitude", longitude),
                 "radius", radiusMeters
             )
         ));
@@ -68,12 +67,13 @@ public class RestaurantService {
             payload.put("openNow", true);
         }
 
-        // Headers
+        // Headers. The field mask now includes userRatingCount + photos so the single
+        // Nearby Search returns everything we filter and display on — no per-place
+        // Place Details calls needed.
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-Goog-Api-Key", apiKey);
-        headers.set("X-Goog-FieldMask", "places.name,places.displayName,places.formattedAddress,places.websiteUri,places.rating,places.priceLevel,places.location");
-
+        headers.set("X-Goog-FieldMask", "places.name,places.displayName,places.formattedAddress,places.websiteUri,places.rating,places.userRatingCount,places.priceLevel,places.location,places.photos");
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
@@ -81,80 +81,56 @@ public class RestaurantService {
         System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(payload));
 
         try {
-            // Call Nearby Search
+            // Single Nearby Search call (1 API call) instead of 1 search + up to 20 Place Details.
             ResponseEntity<PlacesResponse> response = restTemplate.postForEntity(
-                SEARCH_URL, 
-                request, 
+                SEARCH_URL,
+                request,
                 PlacesResponse.class
             );
-            System.out.println("=== GOOGLE PLACES RAW RESPONSE ===");
-            System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(response.getBody()));
 
             List<Place> places = response.getBody().getPlaces();
             if (places == null || places.isEmpty()) {
                 throw new RuntimeException("No restaurants found matching the criteria.");
             }
 
-             // Fetch details and filter
+            Double minRating = currentSearch.getRating();
+            List<String> allowedPrices = currentSearch.getPriceLevel();
+
             List<Restaurant> filtered = new ArrayList<>();
-            
             for (Place p : places) {
-                // Fetch full details for the selected restaurant
-                String detailsUrl = "https://places.googleapis.com/v1/" + p.getName();
-
-                HttpHeaders detailsHeaders = new HttpHeaders();
-                detailsHeaders.set("X-Goog-Api-Key", apiKey);
-                detailsHeaders.set("X-Goog-FieldMask",
-                        "displayName,formattedAddress,websiteUri,rating,userRatingCount,priceLevel,location,photos");
-
-                HttpEntity<Void> detailsRequest = new HttpEntity<>(detailsHeaders);
-
-                ResponseEntity<PlaceDetailsResponse> detailsResponse = restTemplate.exchange(
-                        detailsUrl,
-                        HttpMethod.GET,
-                        detailsRequest,
-                        PlaceDetailsResponse.class
-                );
-
-                PlaceDetailsResponse details = detailsResponse.getBody();
-                if (details == null) continue;
-
-                // Apply rating filter
-                Double minRating = currentSearch.getRating();
-                if (minRating != null &&
-                        (details.getRating() == null || details.getRating() < minRating)) {
+                // Rating filter — straight off the search result, no extra API call
+                if (minRating != null && (p.getRating() == null || p.getRating() < minRating)) {
                     continue;
                 }
 
-                // Apply price filter
-                List<String> allowedPrices = currentSearch.getPriceLevel();
+                // Price filter
                 if (allowedPrices != null && !allowedPrices.isEmpty()) {
-                    String placePrice = details.getPriceLevel();
+                    String placePrice = p.getPriceLevel();
                     if (placePrice == null || !allowedPrices.contains(placePrice)) {
                         continue;
                     }
                 }
-                
-                // Get photos
+
+                // Photo references (already present in the search response)
                 List<String> photoRefs = new ArrayList<>();
-                if (details.getPhotos() != null) {
-                    for (PlaceDetailsResponse.Photo photo : details.getPhotos()) {
+                if (p.getPhotos() != null) {
+                    for (Place.Photo photo : p.getPhotos()) {
                         if (photo.getName() != null) {
                             photoRefs.add(photo.getName());
                         }
                     }
                 }
-                // System.out.println("Photos: " + randomPlace.getPhotos());
+
                 filtered.add(new Restaurant(
                     p.getName(),
-                    details.getDisplayName().getText(),
-                    details.getFormattedAddress(),
-                    details.getWebsiteUri(),
-                    details.getRating(),
-                    details.getUserRatingCount(),
-                    details.getPriceLevel(),
-                    details.getLocation().getLatitude(),
-                    details.getLocation().getLongitude(),
+                    p.getDisplayName() != null ? p.getDisplayName().getText() : null,
+                    p.getFormattedAddress(),
+                    p.getWebsiteUri(),
+                    p.getRating(),
+                    p.getUserRatingCount(),
+                    p.getPriceLevel(),
+                    p.getLocation().getLatitude(),
+                    p.getLocation().getLongitude(),
                     currentSearch.getUserAddress(),
                     photoRefs
                 ));
@@ -163,7 +139,7 @@ public class RestaurantService {
             if (filtered.isEmpty()) {
                 throw new RuntimeException("No restaurants matched rating/price filters.");
             }
-            
+
             return filtered.get(new Random().nextInt(filtered.size()));
 
         } catch (Exception e) {
