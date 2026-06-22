@@ -221,7 +221,9 @@ function clearSuggestions() {
                 radius:    'radius-dropdown'
             };
             const btn = document.getElementById(buttonMap[name]);
-            btn.querySelector('span').textContent = labelText;
+            // Keep the button compact: show just the choice (e.g. "4.0+"),
+            // not the rating stars — those stay visible in the dropdown menu.
+            btn.querySelector('span').textContent = labelText.replace(/[★☆½]/g, '').trim();
         });
     });
 });
