@@ -1,4 +1,5 @@
 let debounceTimer;
+let sessionToken = crypto.randomUUID(); // one Autocomplete session: the keystrokes + resolve-location share it, then it's rolled
 let selectedLocation = null; // Store the selected location for biasing autocomplete results
 
 const searchInput = document.getElementById('address-input');
@@ -17,7 +18,7 @@ searchInput.addEventListener('input', () => {
         return; // Don't fetch suggestions for very short input
     }
 
-    const requestBody = { input };
+    const requestBody = { input, sessionToken };
 
     clearTimeout(debounceTimer); // Clear the previous timer
     debounceTimer = setTimeout(async() => {
@@ -87,12 +88,13 @@ async function onSuggestionSelected(suggestion) {
         const response = await fetch('/resolve-location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: suggestion.placeId })
+            body: JSON.stringify({ name: suggestion.placeId, sessionToken })
         });
 
         if (!response.ok) throw new Error('Failed to resolve location');
 
         selectedLocation = await response.json();
+        sessionToken = crypto.randomUUID(); // selecting a place closes the session; start a fresh one
         showActionButton();
 
     } catch (error) {
@@ -282,15 +284,17 @@ function showResult(restaurant) {
         `&origin=${encodeURIComponent(restaurant.originAddress)}` + 
         `&destination=${restaurant.latitude},${restaurant.longitude}`;
 
-    const hasPhotos = Array.isArray(restaurant.photos) && restaurant.photos.length > 0;
+    const MAX_PHOTOS = 6;
+    const photos = (restaurant.photos || []).slice(0, MAX_PHOTOS); // cap how many photos we ever fetch
+    const hasPhotos = photos.length > 0;
 
     const photoCarousel = hasPhotos
         ? `
-            <div id="photoCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div id="photoCarousel" class="carousel slide">
                 <div class="carousel-inner">
-                    ${restaurant.photos.map((p, i) => `
+                    ${photos.map((p, i) => `
                         <div class="carousel-item ${i === 0 ? 'active' : ''}">
-                            <img src="/photo?photoRef=${p}" class="d-block w-100 rounded">
+                            <img ${i === 0 ? `src="/photo?photoRef=${p}"` : `data-src="/photo?photoRef=${p}"`} class="d-block w-100 rounded" alt="">
                         </div>
                     `).join('')}
                 </div>
@@ -356,4 +360,14 @@ function showResult(restaurant) {
             </div>
         </div>
     `;
+
+    // Lazy-load carousel photos: only the active slide is fetched up front; each other
+    // photo hits /photo only when the user navigates to it.
+    const carouselEl = document.getElementById('photoCarousel');
+    if (carouselEl) {
+        carouselEl.addEventListener('slide.bs.carousel', (e) => {
+            const img = e.relatedTarget.querySelector('img[data-src]');
+            if (img) { img.src = img.dataset.src; img.removeAttribute('data-src'); }
+        });
+    }
 }

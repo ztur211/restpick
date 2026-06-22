@@ -24,7 +24,7 @@ public class AutocompleteService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public List<AutocompleteSuggestion> getSuggestions(String input, Double biasLat, Double biasLng) {
+    public List<AutocompleteSuggestion> getSuggestions(String input, Double biasLat, Double biasLng, String sessionToken) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-Goog-Api-Key", apiKey);
@@ -41,7 +41,10 @@ public class AutocompleteService {
         List<String> regionCodes = Arrays.asList(apiRegion.split(","));
         payload.put("includedRegionCodes", regionCodes);
         payload.put("includeQueryPredictions", false);
-        payload.put("sessionToken", UUID.randomUUID().toString());
+        // One token across a user's autocomplete keystrokes + the resolve-location call groups
+        // them into a single (cheaper) session. Fall back to a fresh token if none is supplied.
+        payload.put("sessionToken",
+                (sessionToken != null && !sessionToken.isBlank()) ? sessionToken : UUID.randomUUID().toString());
         
         System.out.println("Input: " + input);
 
@@ -111,8 +114,12 @@ public class AutocompleteService {
             throw new RuntimeException("Error fetching autocomplete suggestions: " + e.getMessage());
         }
     }
-    public Map<String, Double> getLocation(String placeId) {
+    public Map<String, Double> getLocation(String placeId, String sessionToken) {
         String url = PLACE_DETAILS_URL + placeId;
+        // Link this Place Details call to the autocomplete session for session-based billing.
+        if (sessionToken != null && !sessionToken.isBlank()) {
+            url += "?sessionToken=" + sessionToken;
+        }
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Goog-Api-Key", apiKey);
