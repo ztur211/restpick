@@ -52,7 +52,7 @@ class IndexControllerTest {
         List<AutocompleteSuggestion> suggestions = List.of(
                 new AutocompleteSuggestion("New York", "NY, USA", "place123")
         );
-        when(autocompleteService.getSuggestions("New York", null, null))
+        when(autocompleteService.getSuggestions("New York", null, null, null))
                 .thenReturn(suggestions);
 
         ResponseEntity<?> response = controller.autocomplete(Map.of("input", "New York"));
@@ -66,12 +66,12 @@ class IndexControllerTest {
 
     @Test
     void autocomplete_withLocationBias_passesCoordinates() {
-        when(autocompleteService.getSuggestions("pizza", 40.7, -74.0))
+        when(autocompleteService.getSuggestions("pizza", 40.7, -74.0, null))
                 .thenReturn(List.of());
 
         controller.autocomplete(Map.of("input", "pizza", "biasLatitude", 40.7, "biasLongitude", -74.0));
 
-        verify(autocompleteService).getSuggestions("pizza", 40.7, -74.0);
+        verify(autocompleteService).getSuggestions("pizza", 40.7, -74.0, null);
     }
 
     @Test
@@ -93,7 +93,7 @@ class IndexControllerTest {
 
     @Test
     void autocomplete_serviceThrows_returnsBadRequest() {
-        when(autocompleteService.getSuggestions(any(), any(), any()))
+        when(autocompleteService.getSuggestions(any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("API error"));
 
         ResponseEntity<?> response = controller.autocomplete(Map.of("input", "test"));
@@ -138,7 +138,7 @@ class IndexControllerTest {
 
     @Test
     void resolveLocation_withValidName_returnsCoordinates() {
-        when(autocompleteService.getLocation("place123"))
+        when(autocompleteService.getLocation("place123", null))
                 .thenReturn(Map.of("latitude", 40.7128, "longitude", -74.0060));
 
         ResponseEntity<?> response = controller.resolveLocation(Map.of("name", "place123"));
@@ -165,7 +165,7 @@ class IndexControllerTest {
 
     @Test
     void resolveLocation_serviceThrows_returnsBadRequest() {
-        when(autocompleteService.getLocation(any()))
+        when(autocompleteService.getLocation(any(), any()))
                 .thenThrow(new RuntimeException("Place not found"));
 
         ResponseEntity<?> response = controller.resolveLocation(Map.of("name", "invalid"));
