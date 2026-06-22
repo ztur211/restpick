@@ -197,6 +197,24 @@ class RestaurantServiceTest {
         assertTrue(RestaurantService.ALL_CUISINE_TYPES.contains("sushi_restaurant"));
     }
 
+    @Test
+    void getRandomNearbyRestaurant_capsRadiusAtGoogleMax() {
+        // 50 miles -> 80,467 m, which exceeds Google Nearby Search's 50,000 m cap.
+        SearchRequest request = buildSearchRequest(40.7, -74.0, 50.0);
+        restaurantService.setSearchRequest(request);
+
+        mockServer.expect(requestTo(SEARCH_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.locationRestriction.circle.radius").value(50000.0))
+                .andRespond(withSuccess(
+                        "{\"places\":[{\"name\":\"places/x\",\"displayName\":{\"text\":\"X\"}," +
+                        "\"location\":{\"latitude\":1.0,\"longitude\":2.0},\"photos\":[]}]}",
+                        MediaType.APPLICATION_JSON));
+
+        restaurantService.getRandomNearbyRestaurant();
+        mockServer.verify();
+    }
+
     private SearchRequest buildSearchRequest(double lat, double lng, double radius) {
         SearchRequest.Center center = new SearchRequest.Center();
         center.setLatitude(lat);

@@ -43,7 +43,8 @@ public class RestaurantService {
 
         double latitude = center.getLatitude();
         double longitude = center.getLongitude();
-        double radiusMeters = circle.getRadius() * 1609.34; // Miles to meters
+        // Miles to meters, capped at Google Nearby Search's 50,000 m (50 km) maximum
+        double radiusMeters = Math.min(circle.getRadius() * 1609.34, 50000);
 
         // Use selected cuisine types or default to "restaurant" if none are selected
         List<String> cuisines = currentSearch.getTypes();
