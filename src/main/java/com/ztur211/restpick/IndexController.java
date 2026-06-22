@@ -9,6 +9,9 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
+
+import java.time.Duration;
 
 import java.util.Map;
 
@@ -51,10 +54,11 @@ public class IndexController {
         
         Double biasLat = body.get("biasLatitude") != null ? ((Number) body.get("biasLatitude")).doubleValue() : null;
         Double biasLng = body.get("biasLongitude") != null ? ((Number) body.get("biasLongitude")).doubleValue() : null;
+        String sessionToken = (String) body.get("sessionToken");
 
         try {
             System.out.println("Calling autocomplete service with input: " + input);
-            return ResponseEntity.ok(autocompleteService.getSuggestions(input, biasLat, biasLng));
+            return ResponseEntity.ok(autocompleteService.getSuggestions(input, biasLat, biasLng, sessionToken));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -86,8 +90,9 @@ public class IndexController {
         if (name == null || name.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "name is required"));
         }
+        String sessionToken = body.get("sessionToken");
         try {
-            return ResponseEntity.ok(autocompleteService.getLocation(name));
+            return ResponseEntity.ok(autocompleteService.getLocation(name, sessionToken));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -111,6 +116,7 @@ public class IndexController {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.IMAGE_PNG);
+        headers.setCacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic());
 
         return new ResponseEntity<>(imageBytes, headers, HttpStatus.OK);
     }
@@ -125,6 +131,7 @@ public class IndexController {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.IMAGE_JPEG);
+            headers.setCacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic());
 
             return new ResponseEntity<>(bytes, headers, HttpStatus.OK);
 

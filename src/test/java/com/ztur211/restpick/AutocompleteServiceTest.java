@@ -63,7 +63,7 @@ class AutocompleteServiceTest {
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(responseJson, MediaType.APPLICATION_JSON));
 
-        List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("New", null, null);
+        List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("New", null, null, null);
 
         assertEquals(2, results.size());
         assertEquals("New York", results.get(0).getMainText());
@@ -74,12 +74,23 @@ class AutocompleteServiceTest {
     }
 
     @Test
+    void getSuggestions_usesProvidedSessionToken() {
+        mockServer.expect(requestTo(AUTOCOMPLETE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.sessionToken").value("tok-123"))
+                .andRespond(withSuccess("{\"suggestions\":[]}", MediaType.APPLICATION_JSON));
+
+        autocompleteService.getSuggestions("New York", null, null, "tok-123");
+        mockServer.verify();
+    }
+
+    @Test
     void getSuggestions_nullBody_returnsEmptyList() {
         mockServer.expect(requestTo(AUTOCOMPLETE_URL))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess("null", MediaType.APPLICATION_JSON));
 
-        List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null);
+        List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null, null);
         assertTrue(results.isEmpty());
         mockServer.verify();
     }
@@ -90,7 +101,7 @@ class AutocompleteServiceTest {
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
-        List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null);
+        List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null, null);
         assertTrue(results.isEmpty());
         mockServer.verify();
     }
@@ -116,7 +127,7 @@ class AutocompleteServiceTest {
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(responseJson, MediaType.APPLICATION_JSON));
 
-        List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null);
+        List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null, null);
         assertEquals(1, results.size());
         assertEquals("Valid", results.get(0).getMainText());
         mockServer.verify();
@@ -139,7 +150,7 @@ class AutocompleteServiceTest {
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(responseJson, MediaType.APPLICATION_JSON));
 
-        List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null);
+        List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null, null);
         assertEquals(1, results.size());
         assertEquals("", results.get(0).getMainText());
         assertEquals("", results.get(0).getSecondaryText());
@@ -154,7 +165,7 @@ class AutocompleteServiceTest {
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess("{\"suggestions\":[]}", MediaType.APPLICATION_JSON));
 
-        List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null);
+        List<AutocompleteSuggestion> results = autocompleteService.getSuggestions("test", null, null, null);
         assertNotNull(results);
         mockServer.verify();
     }
@@ -169,10 +180,21 @@ class AutocompleteServiceTest {
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(responseJson, MediaType.APPLICATION_JSON));
 
-        Map<String, Double> result = autocompleteService.getLocation("placeId123");
+        Map<String, Double> result = autocompleteService.getLocation("placeId123", null);
 
         assertEquals(40.7128, result.get("latitude"));
         assertEquals(-74.006, result.get("longitude"));
+        mockServer.verify();
+    }
+
+    @Test
+    void getLocation_appendsSessionTokenToUrl() {
+        mockServer.expect(requestTo(PLACE_DETAILS_URL + "placeId123?sessionToken=tok-123"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("{\"location\":{\"latitude\":1.0,\"longitude\":2.0}}", MediaType.APPLICATION_JSON));
+
+        Map<String, Double> result = autocompleteService.getLocation("placeId123", "tok-123");
+        assertEquals(1.0, result.get("latitude"));
         mockServer.verify();
     }
 
@@ -183,7 +205,7 @@ class AutocompleteServiceTest {
                 .andRespond(withSuccess("null", MediaType.APPLICATION_JSON));
 
         RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> autocompleteService.getLocation("placeId123"));
+                () -> autocompleteService.getLocation("placeId123", null));
         assertTrue(ex.getMessage().contains("Error fetching place details"));
         mockServer.verify();
     }
@@ -195,7 +217,7 @@ class AutocompleteServiceTest {
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
         RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> autocompleteService.getLocation("placeId123"));
+                () -> autocompleteService.getLocation("placeId123", null));
         assertTrue(ex.getMessage().contains("Error fetching place details"));
         mockServer.verify();
     }

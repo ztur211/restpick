@@ -9,7 +9,7 @@ public class Place {
     private String formattedAddress;
     private String websiteUri;
     private Double rating;
-    private Integer ratingCount;
+    private Integer userRatingCount;
     private String priceLevel;
     private Location location;
     private List<Photo> photos;
@@ -49,11 +49,11 @@ public class Place {
         this.rating = rating;
     }
 
-    public Integer getRatingCount() {
-        return ratingCount;
+    public Integer getUserRatingCount() {
+        return userRatingCount;
     }
-    public void setRatingCount(Integer ratingCount) {
-        this.ratingCount = ratingCount;
+    public void setUserRatingCount(Integer userRatingCount) {
+        this.userRatingCount = userRatingCount;
     }
 
     public String getPriceLevel() {
